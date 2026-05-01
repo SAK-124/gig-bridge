@@ -8,12 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Lock } from "lucide-react";
+import { Loader2, Lock, Upload } from "lucide-react";
 
 const StudentProfile = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingResume, setUploadingResume] = useState(false);
   const [p, setP] = useState<any>({ full_name: "", university: "", degree: "", graduation_year: "", skills: "", bio: "", availability: "", preferred_work_type: "either", portfolio_links: "" });
   const [bank, setBank] = useState<any>({ account_title: "", bank_name: "", iban: "", easypaisa: "", jazzcash: "", cnic: "" });
 
@@ -34,6 +35,7 @@ const StudentProfile = () => {
         availability: pr.data.availability || "",
         preferred_work_type: pr.data.preferred_work_type || "either",
         portfolio_links: (pr.data.portfolio_links || []).join(", "),
+        resume_url: pr.data.resume_url || "",
       });
       if (b.data) setBank({
         account_title: b.data.account_title || "", bank_name: b.data.bank_name || "", iban: b.data.iban || "",
@@ -57,12 +59,25 @@ const StudentProfile = () => {
       availability: p.availability.trim() || null,
       preferred_work_type: p.preferred_work_type,
       portfolio_links: p.portfolio_links ? p.portfolio_links.split(",").map((s: string) => s.trim()).filter(Boolean) : [],
+      resume_url: p.resume_url || null,
     };
     const { error } = await supabase.from("profiles").upsert(profilePayload, { onConflict: "user_id" });
     const { error: bErr } = await supabase.from("bank_details").upsert({ user_id: user.id, ...bank }, { onConflict: "user_id" });
     setSaving(false);
     if (error || bErr) return toast.error((error || bErr)?.message);
     toast.success("Profile saved!");
+  };
+
+  const uploadResume = async (file?: File) => {
+    if (!user || !file) return;
+    setUploadingResume(true);
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+    const path = `${user.id}/resume-${Date.now()}-${safeName}`;
+    const { error } = await supabase.storage.from("resumes").upload(path, file, { upsert: true });
+    setUploadingResume(false);
+    if (error) return toast.error(error.message);
+    setP({ ...p, resume_url: path });
+    toast.success("Resume uploaded. Save your profile to keep it linked.");
   };
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" /></div>;
@@ -96,6 +111,14 @@ const StudentProfile = () => {
             </Select>
           </div>
           <div className="sm:col-span-2"><Label>Portfolio links (comma-separated)</Label><Input value={p.portfolio_links} onChange={(e) => setP({ ...p, portfolio_links: e.target.value })} placeholder="https://github.com/you, https://behance.net/you" /></div>
+          <div className="sm:col-span-2 space-y-2">
+            <Label>Resume upload</Label>
+            <div className="flex flex-wrap gap-2">
+              <Input type="file" accept=".pdf,.doc,.docx" onChange={(e) => uploadResume(e.target.files?.[0])} disabled={uploadingResume} />
+              {uploadingResume && <Button type="button" variant="outline" disabled><Loader2 className="mr-2 h-4 w-4 animate-spin" />Uploading</Button>}
+            </div>
+            {p.resume_url && <p className="text-xs text-muted-foreground flex items-center gap-1"><Upload className="h-3.5 w-3.5" />Resume linked privately for admins.</p>}
+          </div>
         </div>
       </Card>
 

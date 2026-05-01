@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
-import { LayoutDashboard, Search, FileText, Briefcase, Wallet, User, Send, Users, Building } from "lucide-react";
+import { LayoutDashboard, Search, FileText, Briefcase, Wallet, User, Send, Users, Building, Settings } from "lucide-react";
 import StudentHome from "@/pages/student/StudentHome";
 import BrowseGigs from "@/pages/student/BrowseGigs";
 import GigDetail from "@/pages/student/GigDetail";
@@ -8,12 +8,15 @@ import StudentApplications from "@/pages/student/StudentApplications";
 import ActiveWork from "@/pages/student/ActiveWork";
 import StudentPayments from "@/pages/student/StudentPayments";
 import StudentProfile from "@/pages/student/StudentProfile";
+import StudentSettings from "@/pages/student/StudentSettings";
 import BusinessHome from "@/pages/business/BusinessHome";
 import PostGig from "@/pages/business/PostGig";
 import Applicants from "@/pages/business/Applicants";
 import ActiveGigs from "@/pages/business/ActiveGigs";
 import BusinessPayments from "@/pages/business/BusinessPayments";
 import CompanyProfile from "@/pages/business/CompanyProfile";
+import BusinessGigDetail from "@/pages/business/BusinessGigDetail";
+import BusinessSettings from "@/pages/business/BusinessSettings";
 
 const studentNav = [
   { to: "/student", label: "Dashboard", icon: LayoutDashboard },
@@ -22,6 +25,7 @@ const studentNav = [
   { to: "/student/active", label: "Active Work", icon: Briefcase },
   { to: "/student/payments", label: "Payments", icon: Wallet },
   { to: "/student/profile", label: "Profile", icon: User },
+  { to: "/student/settings", label: "Settings", icon: Settings },
 ];
 
 const businessNav = [
@@ -31,6 +35,7 @@ const businessNav = [
   { to: "/business/gigs", label: "Active Gigs", icon: Briefcase },
   { to: "/business/payments", label: "Payments", icon: Wallet },
   { to: "/business/company", label: "Company", icon: Building },
+  { to: "/business/settings", label: "Settings", icon: Settings },
 ];
 
 export const StudentRoutes = () => (
@@ -43,6 +48,7 @@ export const StudentRoutes = () => (
       <Route path="active" element={<ActiveWork />} />
       <Route path="payments" element={<StudentPayments />} />
       <Route path="profile" element={<StudentProfile />} />
+      <Route path="settings" element={<StudentSettings />} />
       <Route path="*" element={<Navigate to="/student" replace />} />
     </Route>
   </Routes>
@@ -55,8 +61,10 @@ export const BusinessRoutes = () => (
       <Route path="post" element={<PostGig />} />
       <Route path="applicants" element={<Applicants />} />
       <Route path="gigs" element={<ActiveGigs />} />
+      <Route path="gigs/:id" element={<BusinessGigDetail />} />
       <Route path="payments" element={<BusinessPayments />} />
       <Route path="company" element={<CompanyProfile />} />
+      <Route path="settings" element={<BusinessSettings />} />
       <Route path="*" element={<Navigate to="/business" replace />} />
     </Route>
   </Routes>

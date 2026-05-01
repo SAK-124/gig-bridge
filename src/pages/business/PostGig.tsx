@@ -23,7 +23,7 @@ const PostGig = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
-  const [f, setF] = useState({ title: "", category: "", description: "", required_skills: "", budget: "", deadline: "", location: "remote", slots: "1" });
+  const [f, setF] = useState({ title: "", category: "", description: "", required_skills: "", budget: "", deadline: "", location: "remote", slots: "1", attachments: "" });
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +37,7 @@ const PostGig = () => {
       category: f.category.trim() || null,
       description: f.description.trim(),
       required_skills: f.required_skills ? f.required_skills.split(",").map(s => s.trim()).filter(Boolean) : [],
+      attachments: f.attachments ? f.attachments.split(",").map(s => s.trim()).filter(Boolean) : [],
       budget: parseFloat(f.budget),
       deadline: f.deadline || null,
       location: f.location as any,
@@ -60,6 +61,7 @@ const PostGig = () => {
           <div><Label>Category</Label><Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} placeholder="Design, Writing, Tutoring..." /></div>
           <div><Label>Description *</Label><Textarea rows={5} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} required maxLength={2000} /></div>
           <div><Label>Required skills (comma-separated)</Label><Input value={f.required_skills} onChange={(e) => setF({ ...f, required_skills: e.target.value })} /></div>
+          <div><Label>Attachments or reference links (comma-separated)</Label><Input value={f.attachments} onChange={(e) => setF({ ...f, attachments: e.target.value })} placeholder="https://drive.google.com/..., https://..." /></div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div><Label>Budget (PKR) *</Label><Input type="number" min="1" value={f.budget} onChange={(e) => setF({ ...f, budget: e.target.value })} required /></div>
             <div><Label>Deadline</Label><Input type="date" value={f.deadline} onChange={(e) => setF({ ...f, deadline: e.target.value })} /></div>

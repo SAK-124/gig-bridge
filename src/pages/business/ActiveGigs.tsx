@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { toast } from "sonner";
-import { Loader2, Check, RotateCcw } from "lucide-react";
+import { Loader2, Check, RotateCcw, ShieldAlert } from "lucide-react";
 
 const ActiveGigs = () => {
   const { user } = useAuth();
@@ -15,7 +15,7 @@ const ActiveGigs = () => {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase.from("hires").select("id, status, gigs(title), profiles:student_id(full_name), submissions(id, message, link_url, created_at)").eq("business_id", user.id).order("created_at", { ascending: false });
+    const { data } = await supabase.from("hires").select("id, status, gigs(title), profiles:student_id(full_name), submissions(id, message, link_url, file_url, created_at)").eq("business_id", user.id).order("created_at", { ascending: false });
     setHires(data || []);
     setLoading(false);
   };
@@ -36,6 +36,15 @@ const ActiveGigs = () => {
     await supabase.from("hires").update({ status: "revision_requested" }).eq("id", id);
     setActing(null);
     toast.success("Revision requested.");
+    load();
+  };
+
+  const raiseDispute = async (id: string) => {
+    setActing(id);
+    await supabase.from("hires").update({ status: "disputed" }).eq("id", id);
+    await supabase.from("payments").update({ status: "disputed" }).eq("hire_id", id);
+    setActing(null);
+    toast.success("Dispute raised. Admin will review this hire.");
     load();
   };
 
@@ -67,6 +76,7 @@ const ActiveGigs = () => {
                     <div className="font-medium text-xs uppercase text-muted-foreground">Latest submission</div>
                     <p className="whitespace-pre-wrap">{sub.message}</p>
                     {sub.link_url && <a href={sub.link_url} target="_blank" rel="noreferrer" className="text-primary hover:underline text-xs">{sub.link_url}</a>}
+                    {sub.file_url && <a href={sub.file_url} target="_blank" rel="noreferrer" className="block text-primary hover:underline text-xs">File: {sub.file_url}</a>}
                   </div>
                 )}
                 {h.status === "submitted" && (
@@ -76,6 +86,9 @@ const ActiveGigs = () => {
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => requestRevision(h.id)} disabled={acting === h.id}>
                       <RotateCcw className="mr-2 h-4 w-4" />Request revision
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => raiseDispute(h.id)} disabled={acting === h.id}>
+                      <ShieldAlert className="mr-2 h-4 w-4" />Raise dispute
                     </Button>
                   </div>
                 )}

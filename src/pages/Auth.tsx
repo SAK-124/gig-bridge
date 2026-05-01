@@ -15,7 +15,7 @@ import { GraduationCap, Briefcase, Loader2 } from "lucide-react";
 const signupSchema = z.object({
   fullName: z.string().trim().min(2, "Enter your full name").max(80),
   email: z.string().trim().email("Invalid email").max(255),
-  password: z.string().min(8, "At least 8 characters").max(72),
+  password: z.string().min(1, "Password required").max(72),
   role: z.enum(["student", "business"]),
 });
 
@@ -63,8 +63,13 @@ const Auth = () => {
       await supabase.from("user_roles").insert({ user_id: data.user.id, role: form.role });
     }
     setLoading(false);
-    toast.success("Account created! Please check your email to confirm.");
-    setMode("login");
+    if (data.session) {
+      toast.success("Account created!");
+      navigate(form.role === "business" ? "/business" : "/student");
+    } else {
+      toast.success("Account created. You can log in once email confirmation is complete.");
+      setMode("login");
+    }
   };
 
   return (

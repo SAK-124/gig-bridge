@@ -21,6 +21,9 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState({ users: 0, gigs: 0, commission: 0, payouts: 0 });
   const [pendingPayouts, setPendingPayouts] = useState<any[]>([]);
   const [allPayments, setAllPayments] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [gigs, setGigs] = useState<any[]>([]);
+  const [disputes, setDisputes] = useState<any[]>([]);
   const [bankView, setBankView] = useState<{ open: boolean; data?: any }>({ open: false });
   const [payoutForm, setPayoutForm] = useState({ method: "", reference: "" });
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -33,17 +36,21 @@ const AdminDashboard = () => {
   }, [role, roleLoading]);
 
   const load = async () => {
-    const [usersRes, gigsRes, paymentsRes] = await Promise.all([
-      supabase.from("profiles").select("id", { count: "exact", head: true }),
-      supabase.from("gigs").select("id", { count: "exact", head: true }),
+    const [usersRes, gigsRes, paymentsRes, disputeRes] = await Promise.all([
+      supabase.from("profiles").select("id, user_id, full_name, university, company_name, created_at").order("created_at", { ascending: false }),
+      supabase.from("gigs").select("id, title, budget, status, location, created_at").order("created_at", { ascending: false }),
       supabase.from("payments").select("*, hires(student_id, business_id, gigs(title), profiles:student_id(full_name))"),
+      supabase.from("hires").select("id, status, created_at, gigs(title), profiles:student_id(full_name), payments(status, total_amount)").eq("status", "disputed").order("created_at", { ascending: false }),
     ]);
     const all = paymentsRes.data || [];
+    setUsers(usersRes.data || []);
+    setGigs(gigsRes.data || []);
+    setDisputes(disputeRes.data || []);
     setAllPayments(all);
     setPendingPayouts(all.filter((p: any) => p.status === "payout_pending"));
     setStats({
-      users: usersRes.count || 0,
-      gigs: gigsRes.count || 0,
+      users: usersRes.data?.length || 0,
+      gigs: gigsRes.data?.length || 0,
       commission: all.filter((p: any) => p.status === "paid").reduce((s: number, p: any) => s + parseFloat(p.platform_fee), 0),
       payouts: all.filter((p: any) => p.status === "payout_pending").length,
     });
@@ -97,6 +104,9 @@ const AdminDashboard = () => {
           <TabsList>
             <TabsTrigger value="payouts">Pending payouts ({pendingPayouts.length})</TabsTrigger>
             <TabsTrigger value="all">All payments</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="gigs">Gigs</TabsTrigger>
+            <TabsTrigger value="disputes">Disputes ({disputes.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="payouts" className="mt-4">
@@ -170,6 +180,91 @@ const AdminDashboard = () => {
                           <Button size="sm" variant="outline" onClick={() => markReceived(p.id, p.hire_id)}>Mark received</Button>
                         )}
                       </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="users" className="mt-4">
+            <Card className="rounded-2xl border-border/60 overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Student info</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Joined</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No users found.</TableCell></TableRow>
+                  ) : users.map((u: any) => (
+                    <TableRow key={u.id}>
+                      <TableCell className="font-medium">{u.full_name || "Unnamed user"}</TableCell>
+                      <TableCell>{u.university || "—"}</TableCell>
+                      <TableCell>{u.company_name || "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{new Date(u.created_at).toLocaleDateString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="gigs" className="mt-4">
+            <Card className="rounded-2xl border-border/60 overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Gig</TableHead>
+                    <TableHead>Budget</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Posted</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {gigs.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No gigs found.</TableCell></TableRow>
+                  ) : gigs.map((g: any) => (
+                    <TableRow key={g.id}>
+                      <TableCell className="font-medium">{g.title}</TableCell>
+                      <TableCell>{formatPKR(g.budget)}</TableCell>
+                      <TableCell>{g.location}</TableCell>
+                      <TableCell><StatusBadge status={g.status} /></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{new Date(g.created_at).toLocaleDateString()}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="disputes" className="mt-4">
+            <Card className="rounded-2xl border-border/60 overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Gig</TableHead>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Payment</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Raised</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {disputes.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No disputes.</TableCell></TableRow>
+                  ) : disputes.map((d: any) => (
+                    <TableRow key={d.id}>
+                      <TableCell className="font-medium">{d.gigs?.title}</TableCell>
+                      <TableCell>{d.profiles?.full_name || "Student"}</TableCell>
+                      <TableCell>{d.payments?.total_amount ? formatPKR(d.payments.total_amount) : "—"}</TableCell>
+                      <TableCell><StatusBadge status={d.status} /></TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{new Date(d.created_at).toLocaleDateString()}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

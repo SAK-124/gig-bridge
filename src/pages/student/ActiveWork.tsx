@@ -16,7 +16,7 @@ const ActiveWork = () => {
   const [hires, setHires] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ message: "", link_url: "" });
+  const [form, setForm] = useState({ message: "", link_url: "", file_url: "" });
   const [activeHire, setActiveHire] = useState<string | null>(null);
 
   const load = async () => {
@@ -33,7 +33,7 @@ const ActiveWork = () => {
     if (form.message.trim().length < 10) return toast.error("Add a short message");
     setSubmitting(true);
     const { error: subErr } = await supabase.from("submissions").insert({
-      hire_id: activeHire, message: form.message.trim(), link_url: form.link_url || null,
+      hire_id: activeHire, message: form.message.trim(), link_url: form.link_url || null, file_url: form.file_url || null,
     });
     if (!subErr) {
       await supabase.from("hires").update({ status: "submitted" }).eq("id", activeHire);
@@ -41,7 +41,7 @@ const ActiveWork = () => {
     setSubmitting(false);
     if (subErr) return toast.error(subErr.message);
     toast.success("Work submitted! Waiting for business approval.");
-    setForm({ message: "", link_url: "" });
+    setForm({ message: "", link_url: "", file_url: "" });
     setActiveHire(null);
     load();
   };
@@ -74,6 +74,7 @@ const ActiveWork = () => {
                     <div className="space-y-3">
                       <div><Label>Message</Label><Textarea rows={4} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Describe what you've delivered..." /></div>
                       <div><Label>Link (optional)</Label><Input value={form.link_url} onChange={(e) => setForm({ ...form, link_url: e.target.value })} placeholder="https://..." /></div>
+                      <div><Label>File link (optional)</Label><Input value={form.file_url} onChange={(e) => setForm({ ...form, file_url: e.target.value })} placeholder="Google Drive, Dropbox, or other file URL" /></div>
                       <Button onClick={submitWork} disabled={submitting} className="w-full">
                         {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Submit
                       </Button>
