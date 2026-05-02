@@ -19,13 +19,18 @@ const labels: Record<string, string> = {
   rejected: "Rejected",
   hired: "Hired",
   awaiting: "Awaiting",
+  awaiting_proof: "Awaiting Transfer",
+  awaiting_verification: "Awaiting Verification",
   received: "Received",
   refunded: "Refunded",
+  payout_sent: "Payout Sent",
 };
 
 const tones: Record<string, string> = {
   awaiting_payment: "bg-warning/15 text-warning-foreground border-warning/40",
   awaiting: "bg-warning/15 text-warning-foreground border-warning/40",
+  awaiting_proof: "bg-warning/15 text-warning-foreground border-warning/40",
+  awaiting_verification: "bg-accent/25 text-accent-foreground border-accent/50",
   pending: "bg-warning/15 text-warning-foreground border-warning/40",
   payment_received: "bg-primary/15 text-primary border-primary/40",
   received: "bg-primary/15 text-primary border-primary/40",
@@ -35,6 +40,7 @@ const tones: Record<string, string> = {
   approved: "bg-success/15 text-success border-success/40",
   payout_pending: "bg-accent/20 text-accent-foreground border-accent/50",
   paid: "bg-success/15 text-success border-success/40",
+  payout_sent: "bg-success/15 text-success border-success/40",
   disputed: "bg-destructive/15 text-destructive border-destructive/40",
   open: "bg-success/15 text-success border-success/40",
   closed: "bg-muted text-muted-foreground border-border",

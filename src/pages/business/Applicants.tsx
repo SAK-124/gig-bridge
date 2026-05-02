@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { EmptyState } from "@/components/EmptyState";
+import { EmptyApplications } from "@/assets/illustrations";
 import { toast } from "sonner";
 import { Loader2, UserCheck } from "lucide-react";
 import { computeFees, formatPKR } from "@/lib/payments";
 
 const Applicants = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [groups, setGroups] = useState<Record<string, any[]>>({});
   const [gigs, setGigs] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
@@ -39,25 +43,24 @@ const Applicants = () => {
     const gig = gigs[app.gig_id];
     const fees = computeFees(parseFloat(gig.budget));
 
-    // Create hire
     const { data: hire, error: hErr } = await supabase.from("hires").insert({
-      gig_id: app.gig_id, student_id: app.student_id, business_id: user.id, application_id: app.id, status: "awaiting_payment",
+      gig_id: app.gig_id,
+      student_id: app.student_id,
+      business_id: user.id,
+      application_id: app.id,
+      status: "awaiting_payment",
     }).select().single();
     if (hErr || !hire) { setHiring(null); return toast.error(hErr?.message || "Failed to create hire"); }
 
-    // Create payment record + Shopify checkout
-    const { data: checkout, error: cErr } = await supabase.functions.invoke("create-checkout", {
-      body: { hire_id: hire.id, gig_title: gig.title, gig_amount: fees.gigAmount, platform_fee: fees.platformFee, total: fees.total },
+    const { error: cErr } = await supabase.functions.invoke("initiate-payment", {
+      body: { hire_id: hire.id, gig_amount: fees.gigAmount, platform_fee: fees.platformFee, total: fees.total },
     });
     if (cErr) { setHiring(null); return toast.error(cErr.message); }
 
     await supabase.from("applications").update({ status: "hired" }).eq("id", app.id);
     setHiring(null);
-    if (checkout?.checkoutUrl) {
-      toast.success("Opening checkout...");
-      window.open(checkout.checkoutUrl, "_blank");
-    }
-    load();
+    toast.success("Student hired — send your transfer next.");
+    navigate(`/business/payments/${hire.id}/transfer`);
   };
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" /></div>;
@@ -67,15 +70,21 @@ const Applicants = () => {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-3xl font-bold text-secondary">Applicants</h1>
-        <p className="text-muted-foreground">Review and hire students.</p>
+        <p className="text-muted-foreground">Review and hire students. Hiring opens the bank-transfer escrow flow.</p>
       </div>
       {gigIds.length === 0 ? (
-        <Card className="p-12 text-center rounded-2xl text-muted-foreground">No applications yet.</Card>
+        <EmptyState
+          illustration={<EmptyApplications className="w-full" />}
+          title="No applicants yet"
+          description="Once you post a gig, applications will appear here grouped by gig."
+          ctaLabel="Post a gig"
+          ctaTo="/business/post"
+        />
       ) : gigIds.map((gid) => (
         <div key={gid} className="space-y-3">
           <h2 className="font-semibold text-lg">{gigs[gid]?.title} <span className="text-muted-foreground text-sm">· {formatPKR(gigs[gid]?.budget)}</span></h2>
           {groups[gid].map((a) => (
-            <Card key={a.id} className="p-5 rounded-2xl border-border/60">
+            <Card key={a.id} className="p-5 rounded-2xl border-border/60 hover:shadow-card transition-smooth">
               <div className="flex flex-wrap justify-between items-start gap-3 mb-3">
                 <div>
                   <div className="font-semibold">{a.profiles?.full_name || "Student"}</div>

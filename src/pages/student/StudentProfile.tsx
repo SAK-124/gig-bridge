@@ -6,16 +6,26 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Lock, Upload } from "lucide-react";
+import { Loader2, Lock, Upload, X, Plus } from "lucide-react";
+import { PAKISTAN_UNIVERSITIES } from "@/lib/universities";
+import { SKILL_SUGGESTIONS } from "@/lib/skill-suggestions";
 
 const StudentProfile = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingResume, setUploadingResume] = useState(false);
-  const [p, setP] = useState<any>({ full_name: "", university: "", degree: "", graduation_year: "", skills: "", bio: "", availability: "", preferred_work_type: "either", portfolio_links: "" });
+  const [universityChoice, setUniversityChoice] = useState<string>("Other");
+  const [universityCustom, setUniversityCustom] = useState<string>("");
+  const [p, setP] = useState<any>({
+    full_name: "", university: "", degree: "", graduation_year: "", bio: "",
+    availability: "", preferred_work_type: "either", portfolio_links: "", resume_url: "",
+  });
+  const [skills, setSkills] = useState<string[]>([]);
+  const [skillInput, setSkillInput] = useState("");
   const [bank, setBank] = useState<any>({ account_title: "", bank_name: "", iban: "", easypaisa: "", jazzcash: "", cnic: "" });
 
   useEffect(() => {
@@ -25,18 +35,24 @@ const StudentProfile = () => {
         supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
         supabase.from("bank_details").select("*").eq("user_id", user.id).maybeSingle(),
       ]);
-      if (pr.data) setP({
-        full_name: pr.data.full_name || "",
-        university: pr.data.university || "",
-        degree: pr.data.degree || "",
-        graduation_year: pr.data.graduation_year || "",
-        skills: (pr.data.skills || []).join(", "),
-        bio: pr.data.bio || "",
-        availability: pr.data.availability || "",
-        preferred_work_type: pr.data.preferred_work_type || "either",
-        portfolio_links: (pr.data.portfolio_links || []).join(", "),
-        resume_url: pr.data.resume_url || "",
-      });
+      if (pr.data) {
+        const uni = pr.data.university || "";
+        const isKnown = (PAKISTAN_UNIVERSITIES as readonly string[]).includes(uni);
+        setUniversityChoice(uni ? (isKnown ? uni : "Other") : "Other");
+        setUniversityCustom(isKnown ? "" : uni);
+        setP({
+          full_name: pr.data.full_name || "",
+          university: uni,
+          degree: pr.data.degree || "",
+          graduation_year: pr.data.graduation_year || "",
+          bio: pr.data.bio || "",
+          availability: pr.data.availability || "",
+          preferred_work_type: pr.data.preferred_work_type || "either",
+          portfolio_links: (pr.data.portfolio_links || []).join(", "),
+          resume_url: pr.data.resume_url || "",
+        });
+        setSkills(pr.data.skills || []);
+      }
       if (b.data) setBank({
         account_title: b.data.account_title || "", bank_name: b.data.bank_name || "", iban: b.data.iban || "",
         easypaisa: b.data.easypaisa || "", jazzcash: b.data.jazzcash || "", cnic: b.data.cnic || "",
@@ -45,16 +61,27 @@ const StudentProfile = () => {
     })();
   }, [user]);
 
+  const addSkill = (raw: string) => {
+    const s = raw.trim();
+    if (!s) return;
+    if (skills.find((x) => x.toLowerCase() === s.toLowerCase())) return;
+    setSkills([...skills, s]);
+    setSkillInput("");
+  };
+
+  const removeSkill = (s: string) => setSkills(skills.filter((x) => x !== s));
+
   const save = async () => {
     if (!user) return;
     setSaving(true);
+    const finalUniversity = universityChoice === "Other" ? universityCustom.trim() : universityChoice;
     const profilePayload = {
       user_id: user.id,
       full_name: p.full_name.trim(),
-      university: p.university.trim() || null,
+      university: finalUniversity || null,
       degree: p.degree.trim() || null,
-      graduation_year: p.graduation_year ? parseInt(p.graduation_year) : null,
-      skills: p.skills ? p.skills.split(",").map((s: string) => s.trim()).filter(Boolean) : [],
+      graduation_year: p.graduation_year ? parseInt(String(p.graduation_year)) : null,
+      skills,
       bio: p.bio.trim() || null,
       availability: p.availability.trim() || null,
       preferred_work_type: p.preferred_work_type,
@@ -80,6 +107,8 @@ const StudentProfile = () => {
     toast.success("Resume uploaded. Save your profile to keep it linked.");
   };
 
+  const suggestedNotYetPicked = SKILL_SUGGESTIONS.filter((s) => !skills.find((x) => x.toLowerCase() === s.toLowerCase())).slice(0, 12);
+
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
@@ -93,11 +122,53 @@ const StudentProfile = () => {
         <h2 className="font-semibold text-lg">About you</h2>
         <div className="grid sm:grid-cols-2 gap-4">
           <div><Label>Full name</Label><Input value={p.full_name} onChange={(e) => setP({ ...p, full_name: e.target.value })} /></div>
-          <div><Label>University</Label><Input value={p.university} onChange={(e) => setP({ ...p, university: e.target.value })} /></div>
-          <div><Label>Degree / program</Label><Input value={p.degree} onChange={(e) => setP({ ...p, degree: e.target.value })} /></div>
-          <div><Label>Graduation year</Label><Input type="number" value={p.graduation_year} onChange={(e) => setP({ ...p, graduation_year: e.target.value })} /></div>
-          <div className="sm:col-span-2"><Label>Skills (comma-separated)</Label><Input value={p.skills} onChange={(e) => setP({ ...p, skills: e.target.value })} placeholder="React, copywriting, Urdu translation" /></div>
-          <div className="sm:col-span-2"><Label>Bio</Label><Textarea rows={3} value={p.bio} onChange={(e) => setP({ ...p, bio: e.target.value })} maxLength={500} /></div>
+          <div>
+            <Label>University</Label>
+            <Select value={universityChoice} onValueChange={setUniversityChoice}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {PAKISTAN_UNIVERSITIES.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {universityChoice === "Other" && (
+              <Input className="mt-2" placeholder="Type your university" value={universityCustom} onChange={(e) => setUniversityCustom(e.target.value)} />
+            )}
+          </div>
+          <div><Label>Degree / program</Label><Input value={p.degree} onChange={(e) => setP({ ...p, degree: e.target.value })} placeholder="BSc Computer Science" /></div>
+          <div><Label>Graduation year</Label><Input type="number" min="2024" max="2032" value={p.graduation_year} onChange={(e) => setP({ ...p, graduation_year: e.target.value })} /></div>
+
+          <div className="sm:col-span-2 space-y-2">
+            <Label>Skills</Label>
+            <div className="flex flex-wrap gap-1.5 min-h-[2.25rem] rounded-md border border-input bg-background px-2 py-1.5">
+              {skills.length === 0 && <span className="text-xs text-muted-foreground self-center px-1">No skills yet — add some below.</span>}
+              {skills.map((s) => (
+                <Badge key={s} variant="secondary" className="px-2 py-1 gap-1">
+                  {s}
+                  <button type="button" onClick={() => removeSkill(s)} aria-label={`Remove ${s}`} className="hover:text-destructive"><X className="h-3 w-3" /></button>
+                </Badge>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={skillInput}
+                onChange={(e) => setSkillInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addSkill(skillInput); } }}
+                placeholder="Type a skill and press Enter"
+              />
+              <Button type="button" variant="outline" onClick={() => addSkill(skillInput)}><Plus className="h-4 w-4" /></Button>
+            </div>
+            {suggestedNotYetPicked.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {suggestedNotYetPicked.map((s) => (
+                  <button type="button" key={s} onClick={() => addSkill(s)} className="text-xs px-2.5 py-1 rounded-full border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary transition-smooth">
+                    + {s}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="sm:col-span-2"><Label>Bio</Label><Textarea rows={3} value={p.bio} onChange={(e) => setP({ ...p, bio: e.target.value })} maxLength={500} placeholder="A short, friendly intro businesses will read first." /></div>
           <div><Label>Availability</Label><Input value={p.availability} onChange={(e) => setP({ ...p, availability: e.target.value })} placeholder="10 hrs/week" /></div>
           <div>
             <Label>Preferred work type</Label>

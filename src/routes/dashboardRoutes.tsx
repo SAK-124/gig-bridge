@@ -17,6 +17,7 @@ import BusinessPayments from "@/pages/business/BusinessPayments";
 import CompanyProfile from "@/pages/business/CompanyProfile";
 import BusinessGigDetail from "@/pages/business/BusinessGigDetail";
 import BusinessSettings from "@/pages/business/BusinessSettings";
+import PaymentTransfer from "@/pages/business/PaymentTransfer";
 
 const studentNav = [
   { to: "/student", label: "Dashboard", icon: LayoutDashboard },
@@ -63,6 +64,7 @@ export const BusinessRoutes = () => (
       <Route path="gigs" element={<ActiveGigs />} />
       <Route path="gigs/:id" element={<BusinessGigDetail />} />
       <Route path="payments" element={<BusinessPayments />} />
+      <Route path="payments/:hireId/transfer" element={<PaymentTransfer />} />
       <Route path="company" element={<CompanyProfile />} />
       <Route path="settings" element={<BusinessSettings />} />
       <Route path="*" element={<Navigate to="/business" replace />} />

@@ -39,12 +39,25 @@ const Auth = () => {
     const parsed = loginSchema.safeParse(form);
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
+    const { data: signInData, error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
+    if (error) { setLoading(false); return toast.error(error.message); }
+
+    const userId = signInData.user?.id;
+    if (!userId) { setLoading(false); await supabase.auth.signOut(); return toast.error("Sign-in succeeded but no user was returned. Try again."); }
+
+    const { data: roleRow, error: roleErr } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .maybeSingle();
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (roleErr) { await supabase.auth.signOut(); return toast.error(`Could not load your role: ${roleErr.message}`); }
+    if (!roleRow?.role) { await supabase.auth.signOut(); return toast.error("Account exists but no role is attached. Contact admin to finish setup."); }
+
     toast.success("Welcome back!");
-    const { data: roleRow } = await supabase.from("user_roles").select("role").maybeSingle();
-    navigate(roleRow?.role === "business" ? "/business" : roleRow?.role === "admin" ? "/admin" : "/student");
+    if (roleRow.role === "admin") navigate("/admin");
+    else if (roleRow.role === "business") navigate("/business");
+    else navigate("/student");
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -59,9 +72,17 @@ const Auth = () => {
       options: { emailRedirectTo: redirectUrl, data: { full_name: form.fullName } },
     });
     if (error) { setLoading(false); return toast.error(error.message); }
+
     if (data.user) {
-      await supabase.from("user_roles").insert({ user_id: data.user.id, role: form.role });
+      const { error: roleErr } = await supabase
+        .from("user_roles")
+        .insert({ user_id: data.user.id, role: form.role });
+      if (roleErr && !/duplicate|already/i.test(roleErr.message)) {
+        setLoading(false);
+        return toast.error(`Account created but role assignment failed: ${roleErr.message}. Sign in and contact support.`);
+      }
     }
+
     setLoading(false);
     if (data.session) {
       toast.success("Account created!");
