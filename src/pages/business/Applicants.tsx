@@ -11,6 +11,7 @@ import { EmptyApplications } from "@/assets/illustrations";
 import { toast } from "sonner";
 import { Loader2, UserCheck } from "lucide-react";
 import { computeFees, formatPKR } from "@/lib/payments";
+import { fetchProfileMap } from "@/lib/profileMaps";
 
 const Applicants = () => {
   const { user } = useAuth();
@@ -28,9 +29,10 @@ const Applicants = () => {
     (gigList || []).forEach((g) => gigMap[g.id] = g);
     setGigs(gigMap);
     if (!ids.length) { setLoading(false); return; }
-    const { data: apps } = await supabase.from("applications").select("id, status, cover_letter, student_id, gig_id, created_at, profiles:student_id(full_name, university, skills)").in("gig_id", ids);
+    const { data: apps } = await supabase.from("applications").select("id, status, cover_letter, student_id, gig_id, created_at").in("gig_id", ids);
+    const profileMap = await fetchProfileMap((apps || []).map((a: any) => a.student_id), "full_name, university, skills");
     const grouped: Record<string, any[]> = {};
-    (apps || []).forEach((a: any) => { (grouped[a.gig_id] ||= []).push(a); });
+    (apps || []).forEach((a: any) => { (grouped[a.gig_id] ||= []).push({ ...a, profiles: profileMap.get(a.student_id) || null }); });
     setGroups(grouped);
     setLoading(false);
   };

@@ -47,8 +47,8 @@ const AdminDashboard = () => {
     const [usersRes, gigsRes, paymentsRes, disputeRes] = await Promise.all([
       supabase.from("profiles").select("id, user_id, full_name, university, company_name, created_at").order("created_at", { ascending: false }),
       supabase.from("gigs").select("id, title, budget, status, location, created_at").order("created_at", { ascending: false }),
-      supabase.from("payments").select("*, hires(id, student_id, business_id, gigs(title), profiles:student_id(full_name))").order("created_at", { ascending: false }),
-      supabase.from("hires").select("id, status, created_at, gigs(title), profiles:student_id(full_name), payments(id, status, total_amount, business_proof_url)").eq("status", "disputed").order("created_at", { ascending: false }),
+      supabase.from("payments").select("*, hires(id, student_id, business_id, gigs(title), profiles!hires_student_id_fkey(full_name))").order("created_at", { ascending: false }),
+      supabase.from("hires").select("id, status, created_at, gigs(title), profiles!hires_student_id_fkey(full_name), payments(id, status, total_amount, business_proof_url)").eq("status", "disputed").order("created_at", { ascending: false }),
     ]);
     const all = paymentsRes.data || [];
     setUsers(usersRes.data || []);

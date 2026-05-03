@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { GigCard } from "@/components/GigCard";
 import { HeroBridge } from "@/assets/illustrations";
+import { fetchProfileMap } from "@/lib/profileMaps";
 import { Briefcase, Send, Wallet, CheckCircle2, ArrowRight, Sparkles, GraduationCap } from "lucide-react";
 import { formatPKR } from "@/lib/payments";
 
@@ -26,7 +27,7 @@ const StudentHome = () => {
         supabase.from("profiles").select("full_name, skills, university").eq("user_id", user.id).maybeSingle(),
         supabase.from("hires").select("id, status, gigs(title), payments(gig_amount, status, paid_to_student_at)").eq("student_id", user.id).order("created_at", { ascending: false }),
         supabase.from("applications").select("id").eq("student_id", user.id),
-        supabase.from("gigs").select("id, title, category, description, budget, deadline, location, required_skills, business_id, profiles:business_id(company_name)").eq("status", "open").order("created_at", { ascending: false }).limit(40),
+        supabase.from("gigs").select("id, title, category, description, budget, deadline, location, required_skills, business_id").eq("status", "open").order("created_at", { ascending: false }).limit(40),
       ]);
       const h = hiresRes.data || [];
       const lifetime = h.reduce((sum, r: any) => {
@@ -45,7 +46,9 @@ const StudentHome = () => {
       setRecent(h.slice(0, 5));
 
       const skills = (profileRes.data?.skills || []).map((s: string) => s.toLowerCase());
-      const all = (gigsRes.data || []).map((g: any) => ({ ...g, company_name: g.profiles?.company_name }));
+      const gigRows = gigsRes.data || [];
+      const profileMap = await fetchProfileMap(gigRows.map((g: any) => g.business_id), "company_name");
+      const all = gigRows.map((g: any) => ({ ...g, company_name: profileMap.get(g.business_id)?.company_name || null }));
       const matchScore = (g: any) => {
         const required = (g.required_skills || []).map((s: string) => s.toLowerCase());
         const overlap = required.filter((s: string) => skills.includes(s)).length;

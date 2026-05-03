@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Briefcase, Users, Wallet, CheckCircle2, ArrowRight, Plus, Send, AlertCircle } from "lucide-react";
 import { formatPKR, paymentDisplayStatus } from "@/lib/payments";
+import { fetchProfileMap } from "@/lib/profileMaps";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -39,13 +40,15 @@ const BusinessHome = () => {
 
       const [appsRes, hiresRes, paymentsRes] = await Promise.all([
         ids.length
-          ? supabase.from("applications").select("id, status, created_at, gig_id, profiles:student_id(full_name, university)").in("gig_id", ids).order("created_at", { ascending: false })
+          ? supabase.from("applications").select("id, status, created_at, gig_id, student_id").in("gig_id", ids).order("created_at", { ascending: false })
           : Promise.resolve({ data: [] as any[] }),
         supabase.from("hires").select("id, status, gig_id").eq("business_id", user.id),
         supabase.from("payments").select("status, gig_amount, total_amount, business_proof_url, hires!inner(business_id)").eq("hires.business_id", user.id),
       ]);
 
-      const apps = appsRes.data || [];
+      const rawApps = appsRes.data || [];
+      const appProfileMap = await fetchProfileMap(rawApps.map((a: any) => a.student_id), "full_name, university");
+      const apps = rawApps.map((a: any) => ({ ...a, profiles: appProfileMap.get(a.student_id) || null }));
       const hires = hiresRes.data || [];
       const payments = paymentsRes.data || [];
 

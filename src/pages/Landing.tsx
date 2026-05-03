@@ -11,6 +11,7 @@ import {
   UserPlus, FileSearch, ListChecks, Users, ArrowRight, Sparkles, Receipt, Quote
 } from "lucide-react";
 import { formatPKR } from "@/lib/payments";
+import { fetchProfileMap } from "@/lib/profileMaps";
 
 type FeaturedGig = {
   id: string;
@@ -45,12 +46,14 @@ const Landing = () => {
   useEffect(() => {
     (async () => {
       const [gigsRes, paidRes, studentRolesRes, completedRes] = await Promise.all([
-        supabase.from("gigs").select("id, title, category, description, budget, deadline, location, required_skills, business_id, profiles:business_id(company_name)").eq("status", "open").order("created_at", { ascending: false }).limit(6),
+        supabase.from("gigs").select("id, title, category, description, budget, deadline, location, required_skills, business_id").eq("status", "open").order("created_at", { ascending: false }).limit(6),
         supabase.from("payments").select("gig_amount").eq("status", "paid"),
         supabase.from("user_roles").select("user_id", { count: "exact", head: true }).eq("role", "student"),
         supabase.from("hires").select("id", { count: "exact", head: true }).eq("status", "paid"),
       ]);
-      setFeatured((gigsRes.data || []).map((g: any) => ({ ...g, company_name: g.profiles?.company_name })));
+      const gigRows = gigsRes.data || [];
+      const profileMap = await fetchProfileMap(gigRows.map((g: any) => g.business_id), "company_name");
+      setFeatured(gigRows.map((g: any) => ({ ...g, company_name: profileMap.get(g.business_id)?.company_name || null })));
       const paid = (paidRes.data || []).reduce((s: number, p: any) => s + parseFloat(p.gig_amount || "0"), 0);
       setStats({
         paid,

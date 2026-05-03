@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { GigCard } from "@/components/GigCard";
 import { EmptyState } from "@/components/EmptyState";
 import { EmptyGigs } from "@/assets/illustrations";
+import { fetchProfileMap } from "@/lib/profileMaps";
 import { Search } from "lucide-react";
 
 interface Gig {
@@ -30,11 +31,13 @@ const BrowseGigs = () => {
   useEffect(() => {
     supabase
       .from("gigs")
-      .select("*, profiles:business_id(company_name)")
+      .select("*")
       .eq("status", "open")
       .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        setGigs(((data as any[]) || []).map((g) => ({ ...g, company_name: g.profiles?.company_name })));
+      .then(async ({ data }) => {
+        const rows = (data as any[]) || [];
+        const profileMap = await fetchProfileMap(rows.map((g) => g.business_id), "company_name");
+        setGigs(rows.map((g) => ({ ...g, company_name: profileMap.get(g.business_id)?.company_name || null })));
         setLoading(false);
       });
   }, []);

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatPKR } from "@/lib/payments";
+import { fetchProfileMap } from "@/lib/profileMaps";
 import { Calendar, Loader2, MapPin } from "lucide-react";
 
 const BusinessGigDetail = () => {
@@ -20,9 +21,10 @@ const BusinessGigDetail = () => {
     if (!id || !user) return;
     (async () => {
       const { data: gigRow } = await supabase.from("gigs").select("*").eq("id", id).eq("business_id", user.id).maybeSingle();
-      const { data: apps } = await supabase.from("applications").select("id, status, created_at, profiles:student_id(full_name, university, skills)").eq("gig_id", id).order("created_at", { ascending: false });
+      const { data: apps } = await supabase.from("applications").select("id, status, created_at, student_id").eq("gig_id", id).order("created_at", { ascending: false });
+      const profileMap = await fetchProfileMap((apps || []).map((a: any) => a.student_id), "full_name, university, skills");
       setGig(gigRow);
-      setApplications(apps || []);
+      setApplications((apps || []).map((app: any) => ({ ...app, profiles: profileMap.get(app.student_id) || null })));
       setLoading(false);
     })();
   }, [id, user]);

@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { PaymentProofUploader } from "@/components/PaymentProofUploader";
 import { PaymentProofViewer } from "@/components/PaymentProofViewer";
 import { fetchActivePlatformBankAccount, formatPKR, paymentDisplayStatus, transferReferenceForHire, type PlatformBankAccount } from "@/lib/payments";
+import { fetchProfileMap } from "@/lib/profileMaps";
 import { toast } from "sonner";
 import { ArrowLeft, BadgeCheck, Building, Copy, Loader2, ShieldCheck, Wallet } from "lucide-react";
 
@@ -30,7 +31,7 @@ const PaymentTransfer = () => {
     if (!user || !hireId) return;
     (async () => {
       const [{ data: h }, { data: p }, b] = await Promise.all([
-        supabase.from("hires").select("id, status, business_id, gigs(title, budget), profiles:student_id(full_name)").eq("id", hireId).maybeSingle(),
+        supabase.from("hires").select("id, status, business_id, student_id, gigs(title, budget)").eq("id", hireId).maybeSingle(),
         supabase.from("payments").select("*").eq("hire_id", hireId).maybeSingle(),
         fetchActivePlatformBankAccount(),
       ]);
@@ -39,7 +40,8 @@ const PaymentTransfer = () => {
         navigate("/business/payments");
         return;
       }
-      setHire(h);
+      const profileMap = await fetchProfileMap(h?.student_id ? [h.student_id] : [], "full_name");
+      setHire({ ...h, profiles: profileMap.get(h.student_id) || null });
       setPayment(p);
       setBank(b);
       setReference(p?.business_proof_reference || transferReferenceForHire(hireId));

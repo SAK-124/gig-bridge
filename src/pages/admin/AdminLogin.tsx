@@ -14,11 +14,17 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const normalizedEmail = (value: string) => {
+    const trimmed = value.trim();
+    if (trimmed.toLowerCase() === "admin") return "admin@gigbridge.local";
+    return trimmed;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return toast.error("Email and password required");
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail(email), password });
     if (error) { setLoading(false); return toast.error(error.message); }
 
     const userId = data.user?.id;
@@ -56,7 +62,7 @@ const AdminLogin = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <Label htmlFor="ae">Email</Label>
-              <Input id="ae" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Input id="ae" type="text" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div>
               <Label htmlFor="ap">Password</Label>

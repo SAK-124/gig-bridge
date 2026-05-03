@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
+import { fetchProfileMap } from "@/lib/profileMaps";
 import { toast } from "sonner";
 import { Loader2, Check, RotateCcw, ShieldAlert } from "lucide-react";
 
@@ -15,8 +16,9 @@ const ActiveGigs = () => {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase.from("hires").select("id, status, gigs(title), profiles:student_id(full_name), submissions(id, message, link_url, file_url, created_at)").eq("business_id", user.id).order("created_at", { ascending: false });
-    setHires(data || []);
+    const { data } = await supabase.from("hires").select("id, status, student_id, gigs(title), submissions(id, message, link_url, file_url, created_at)").eq("business_id", user.id).order("created_at", { ascending: false });
+    const profileMap = await fetchProfileMap((data || []).map((h: any) => h.student_id), "full_name");
+    setHires((data || []).map((h: any) => ({ ...h, profiles: profileMap.get(h.student_id) || null })));
     setLoading(false);
   };
 
