@@ -65,7 +65,10 @@ const Auth = () => {
     const parsed = signupSchema.safeParse(form);
     if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
     setLoading(true);
-    const { data, error } = await supabase.functions.invoke("create-account", {
+    let createdEmail = form.email;
+    let createdPassword = form.password;
+
+    const { data: createdViaFunction, error: functionError } = await supabase.functions.invoke("create-account", {
       body: {
         full_name: form.fullName,
         email: form.email,
@@ -73,14 +76,30 @@ const Auth = () => {
         role: form.role,
       },
     });
-    setLoading(false);
-    if (error) return toast.error(error.message);
-    if (!data?.email || !data?.password) return toast.error("Account created but the login details were not returned. Try again.");
+
+    if (functionError) {
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { data: { full_name: form.fullName, role: form.role } },
+      });
+      if (signUpError) {
+        setLoading(false);
+        return toast.error(signUpError.message);
+      }
+    } else if (createdViaFunction?.email && createdViaFunction?.password) {
+      createdEmail = createdViaFunction.email;
+      createdPassword = createdViaFunction.password;
+    } else {
+      setLoading(false);
+      return toast.error("Account creation failed. Try again.");
+    }
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
+      email: createdEmail,
+      password: createdPassword,
     });
+    setLoading(false);
     if (signInError) return toast.error(signInError.message);
 
     toast.success("Account created!");
