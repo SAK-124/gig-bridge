@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Calendar, MapPin, Building2, Clock } from "lucide-react";
+import { Calendar, MapPin, Building2, Clock, Users } from "lucide-react";
 import { formatPKR } from "@/lib/payments";
 
 export type GigCardData = {
@@ -16,6 +16,7 @@ export type GigCardData = {
   required_skills?: string[] | null;
   business_id?: string;
   company_name?: string | null;
+  applicant_count?: number;
 };
 
 type Props = {
@@ -84,6 +85,9 @@ export const GigCard = ({ gig, to, ctaLabel = "View & apply", compact = false }:
         <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{gig.location}</span>
         {gig.deadline && <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{new Date(gig.deadline).toLocaleDateString()}</span>}
         {dueIn && <span className="flex items-center gap-1 text-accent-foreground"><Clock className="h-3.5 w-3.5" />{dueIn}</span>}
+        {gig.applicant_count !== undefined && (
+          <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{gig.applicant_count} applicant{gig.applicant_count !== 1 ? "s" : ""}</span>
+        )}
       </div>
 
       {skills.length > 0 && (

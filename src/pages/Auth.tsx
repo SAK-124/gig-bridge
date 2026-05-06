@@ -108,11 +108,11 @@ const Auth = () => {
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="li-email">Email</Label>
-                  <Input id="li-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+                  <Input id="li-email" type="email" className="text-base" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="li-pass">Password</Label>
-                  <Input id="li-pass" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+                  <Input id="li-pass" type="password" className="text-base" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Log in
@@ -137,15 +137,15 @@ const Auth = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="su-name">{form.role === "business" ? "Your name" : "Full name"}</Label>
-                  <Input id="su-name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
+                  <Input id="su-name" className="text-base" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="su-email">Email</Label>
-                  <Input id="su-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+                  <Input id="su-email" type="email" className="text-base" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="su-pass">Password</Label>
-                  <Input id="su-pass" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+                  <Input id="su-pass" type="password" className="text-base" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Create account

@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
+import { StudentProfileSheet } from "@/components/StudentProfileSheet";
 import { EmptyApplications } from "@/assets/illustrations";
 import { toast } from "sonner";
-import { Loader2, UserCheck } from "lucide-react";
+import { Loader2, UserCheck, User } from "lucide-react";
 import { computeFees, formatPKR } from "@/lib/payments";
 import { fetchProfileMap } from "@/lib/profileMaps";
 
@@ -20,6 +21,7 @@ const Applicants = () => {
   const [gigs, setGigs] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [hiring, setHiring] = useState<string | null>(null);
+  const [profileSheet, setProfileSheet] = useState<{ open: boolean; studentId: string }>({ open: false, studentId: "" });
 
   const load = async () => {
     if (!user) return;
@@ -30,7 +32,7 @@ const Applicants = () => {
     setGigs(gigMap);
     if (!ids.length) { setLoading(false); return; }
     const { data: apps } = await supabase.from("applications").select("id, status, cover_letter, student_id, gig_id, created_at").in("gig_id", ids);
-    const profileMap = await fetchProfileMap((apps || []).map((a: any) => a.student_id), "full_name, university, skills");
+    const profileMap = await fetchProfileMap((apps || []).map((a: any) => a.student_id), "full_name, university, skills, is_student_verified");
     const grouped: Record<string, any[]> = {};
     (apps || []).forEach((a: any) => { (grouped[a.gig_id] ||= []).push({ ...a, profiles: profileMap.get(a.student_id) || null }); });
     setGroups(grouped);
@@ -88,11 +90,25 @@ const Applicants = () => {
           {groups[gid].map((a) => (
             <Card key={a.id} className="p-5 rounded-2xl border-border/60 hover:shadow-card transition-smooth">
               <div className="flex flex-wrap justify-between items-start gap-3 mb-3">
-                <div>
-                  <div className="font-semibold">{a.profiles?.full_name || "Student"}</div>
-                  <div className="text-xs text-muted-foreground">{a.profiles?.university}</div>
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="h-9 w-9 rounded-xl bg-primary-soft text-primary font-display font-bold grid place-items-center flex-shrink-0 text-sm">
+                    {(a.profiles?.full_name || "S").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold flex items-center gap-2 flex-wrap">
+                      {a.profiles?.full_name || "Student"}
+                      {a.profiles?.is_student_verified && (
+                        <span className="text-xs font-medium text-success bg-success/15 px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                          ✓ Verified
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{a.profiles?.university}</div>
+                  </div>
                 </div>
-                <StatusBadge status={a.status} />
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={a.status} />
+                </div>
               </div>
               {a.profiles?.skills?.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-3">
@@ -100,16 +116,27 @@ const Applicants = () => {
                 </div>
               )}
               <p className="text-sm text-foreground/80 mb-4 whitespace-pre-wrap">{a.cover_letter}</p>
-              {a.status !== "hired" && (
-                <Button size="sm" onClick={() => hire(a)} disabled={hiring === a.id}>
-                  {hiring === a.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserCheck className="mr-2 h-4 w-4" />}
-                  Hire — pay {formatPKR(computeFees(parseFloat(gigs[gid]?.budget)).total)}
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setProfileSheet({ open: true, studentId: a.student_id })}>
+                  <User className="mr-2 h-4 w-4" />View profile
                 </Button>
-              )}
+                {a.status !== "hired" && (
+                  <Button size="sm" onClick={() => hire(a)} disabled={hiring === a.id}>
+                    {hiring === a.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserCheck className="mr-2 h-4 w-4" />}
+                    Hire — pay {formatPKR(computeFees(parseFloat(gigs[gid]?.budget)).total)}
+                  </Button>
+                )}
+              </div>
             </Card>
           ))}
         </div>
       ))}
+
+      <StudentProfileSheet
+        studentId={profileSheet.studentId}
+        open={profileSheet.open}
+        onClose={() => setProfileSheet({ open: false, studentId: "" })}
+      />
     </div>
   );
 };

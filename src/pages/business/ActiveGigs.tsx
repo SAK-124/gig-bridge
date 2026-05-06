@@ -1,18 +1,26 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/StatusBadge";
 import { fetchProfileMap } from "@/lib/profileMaps";
+import { HireChat } from "@/components/HireChat";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Check, RotateCcw, ShieldAlert } from "lucide-react";
+import { Loader2, Check, RotateCcw, ShieldAlert, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 
 const ActiveGigs = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [hires, setHires] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [disputeForm, setDisputeForm] = useState<Record<string, { open: boolean; reason: string; saving: boolean }>>({});
 
   const load = async () => {
     if (!user) return;
@@ -41,14 +49,29 @@ const ActiveGigs = () => {
     load();
   };
 
-  const raiseDispute = async (id: string) => {
-    setActing(id);
-    await supabase.from("hires").update({ status: "disputed" }).eq("id", id);
-    await supabase.from("payments").update({ status: "disputed" }).eq("hire_id", id);
-    setActing(null);
+  const openDisputeForm = (id: string) => {
+    setDisputeForm((prev) => ({ ...prev, [id]: { open: true, reason: "", saving: false } }));
+  };
+
+  const raiseDispute = async (hireId: string) => {
+    const df = disputeForm[hireId];
+    if (!df || !df.reason.trim()) return toast.error("Please describe the reason for the dispute");
+    if (!user) return;
+    setDisputeForm((prev) => ({ ...prev, [hireId]: { ...prev[hireId], saving: true } }));
+    await supabase.from("disputes").insert({
+      hire_id: hireId,
+      raised_by_id: user.id,
+      raised_by_role: "business",
+      reason: df.reason.trim(),
+    });
+    await supabase.from("hires").update({ status: "disputed" }).eq("id", hireId);
+    await supabase.from("payments").update({ status: "disputed" }).eq("hire_id", hireId);
+    setDisputeForm((prev) => ({ ...prev, [hireId]: { open: false, reason: "", saving: false } }));
     toast.success("Dispute raised. Admin will review this hire.");
     load();
   };
+
+  const toggleExpand = (id: string) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" /></div>;
 
@@ -64,6 +87,8 @@ const ActiveGigs = () => {
         <div className="space-y-3">
           {hires.map((h) => {
             const sub = h.submissions?.[h.submissions.length - 1];
+            const isExpanded = expanded[h.id];
+            const df = disputeForm[h.id];
             return (
               <Card key={h.id} className="p-5 rounded-2xl border-border/60">
                 <div className="flex flex-wrap justify-between items-start gap-3 mb-3">
@@ -71,7 +96,12 @@ const ActiveGigs = () => {
                     <div className="font-semibold">{h.gigs?.title}</div>
                     <div className="text-xs text-muted-foreground">Hired: {h.profiles?.full_name}</div>
                   </div>
-                  <StatusBadge status={h.status} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={h.status} />
+                    <Button size="sm" variant="ghost" onClick={() => toggleExpand(h.id)}>
+                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 </div>
                 {sub && (
                   <div className="bg-muted/40 rounded-xl p-3 text-sm space-y-1 mb-3">
@@ -82,17 +112,56 @@ const ActiveGigs = () => {
                   </div>
                 )}
                 {h.status === "submitted" && (
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2 mb-3">
                     <Button size="sm" onClick={() => approve(h.id)} disabled={acting === h.id}>
                       <Check className="mr-2 h-4 w-4" />Approve work
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => requestRevision(h.id)} disabled={acting === h.id}>
                       <RotateCcw className="mr-2 h-4 w-4" />Request revision
                     </Button>
-                    <Button size="sm" variant="destructive" onClick={() => raiseDispute(h.id)} disabled={acting === h.id}>
-                      <ShieldAlert className="mr-2 h-4 w-4" />Raise dispute
-                    </Button>
+                    <Dialog open={df?.open} onOpenChange={(o) => { if (o) openDisputeForm(h.id); else setDisputeForm((prev) => ({ ...prev, [h.id]: { ...prev[h.id], open: false } })); }}>
+                      <DialogTrigger asChild>
+                        <Button size="sm" variant="destructive"><ShieldAlert className="mr-2 h-4 w-4" />Raise dispute</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader><DialogTitle>Raise a dispute</DialogTitle></DialogHeader>
+                        <div className="space-y-4 text-sm">
+                          <p className="text-muted-foreground">Describe the issue clearly. Gig Bridge will review the original gig brief, submitted work, chat history, and any evidence you provide.</p>
+                          <div>
+                            <Label>Reason *</Label>
+                            <Textarea
+                              rows={4}
+                              value={df?.reason || ""}
+                              onChange={(e) => setDisputeForm((prev) => ({ ...prev, [h.id]: { ...prev[h.id], reason: e.target.value } }))}
+                              placeholder="What is the issue with the submitted work? How does it not meet the agreed deliverables?"
+                            />
+                          </div>
+                          <div className="bg-muted/40 rounded-xl p-3 text-xs text-muted-foreground">
+                            You can also upload evidence on the dispute page after submitting.
+                          </div>
+                          <Button onClick={() => raiseDispute(h.id)} disabled={df?.saving} className="w-full">
+                            {df?.saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Submit dispute
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
+                )}
+                {h.status === "disputed" && (
+                  <Button size="sm" variant="outline" onClick={() => navigate(`/business/dispute/${h.id}`)}>
+                    <ShieldAlert className="mr-2 h-4 w-4" />View dispute
+                  </Button>
+                )}
+                {/* Expandable chat */}
+                {isExpanded && (
+                  <div className="mt-4 border-t border-border/60 pt-4">
+                    <HireChat hireId={h.id} />
+                  </div>
+                )}
+                {!isExpanded && (
+                  <button type="button" onClick={() => toggleExpand(h.id)} className="mt-2 text-xs text-muted-foreground flex items-center gap-1 hover:text-primary transition-colors">
+                    <MessageCircle className="h-3.5 w-3.5" />Show messages
+                  </button>
                 )}
               </Card>
             );

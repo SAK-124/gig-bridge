@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
-import { LayoutDashboard, Search, FileText, Briefcase, Wallet, User, Send, Users, Building, Settings } from "lucide-react";
+import { LayoutDashboard, Search, FileText, Briefcase, Wallet, User, Send, Users, Building, Settings, ShieldAlert } from "lucide-react";
 import StudentHome from "@/pages/student/StudentHome";
 import BrowseGigs from "@/pages/student/BrowseGigs";
 import GigDetail from "@/pages/student/GigDetail";
@@ -9,6 +9,7 @@ import ActiveWork from "@/pages/student/ActiveWork";
 import StudentPayments from "@/pages/student/StudentPayments";
 import StudentProfile from "@/pages/student/StudentProfile";
 import StudentSettings from "@/pages/student/StudentSettings";
+import DisputeDetail from "@/pages/shared/DisputeDetail";
 import BusinessHome from "@/pages/business/BusinessHome";
 import PostGig from "@/pages/business/PostGig";
 import Applicants from "@/pages/business/Applicants";
@@ -50,6 +51,7 @@ export const StudentRoutes = () => (
       <Route path="payments" element={<StudentPayments />} />
       <Route path="profile" element={<StudentProfile />} />
       <Route path="settings" element={<StudentSettings />} />
+      <Route path="dispute/:hireId" element={<DisputeDetail />} />
       <Route path="*" element={<Navigate to="/student" replace />} />
     </Route>
   </Routes>
@@ -67,6 +69,7 @@ export const BusinessRoutes = () => (
       <Route path="payments/:hireId/transfer" element={<PaymentTransfer />} />
       <Route path="company" element={<CompanyProfile />} />
       <Route path="settings" element={<BusinessSettings />} />
+      <Route path="dispute/:hireId" element={<DisputeDetail />} />
       <Route path="*" element={<Navigate to="/business" replace />} />
     </Route>
   </Routes>

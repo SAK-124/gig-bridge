@@ -91,14 +91,67 @@ export type Database = {
         }
         Relationships: []
       }
+      disputes: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          evidence_urls: string[] | null
+          hire_id: string
+          id: string
+          raised_by_id: string
+          raised_by_role: string
+          reason: string
+          resolution: string | null
+          resolved_at: string | null
+          status: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          evidence_urls?: string[] | null
+          hire_id: string
+          id?: string
+          raised_by_id: string
+          raised_by_role: string
+          reason: string
+          resolution?: string | null
+          resolved_at?: string | null
+          status?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          evidence_urls?: string[] | null
+          hire_id?: string
+          id?: string
+          raised_by_id?: string
+          raised_by_role?: string
+          reason?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disputes_hire_id_fkey"
+            columns: ["hire_id"]
+            isOneToOne: false
+            referencedRelation: "hires"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gigs: {
         Row: {
+          acceptance_criteria: string | null
           attachments: string[] | null
+          brief: Json | null
           budget: number
           business_id: string
           category: string | null
           created_at: string
           deadline: string | null
+          deliverables: string | null
           description: string
           id: string
           location: Database["public"]["Enums"]["location_type"]
@@ -109,12 +162,15 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          acceptance_criteria?: string | null
           attachments?: string[] | null
+          brief?: Json | null
           budget: number
           business_id: string
           category?: string | null
           created_at?: string
           deadline?: string | null
+          deliverables?: string | null
           description: string
           id?: string
           location?: Database["public"]["Enums"]["location_type"]
@@ -125,12 +181,15 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          acceptance_criteria?: string | null
           attachments?: string[] | null
+          brief?: Json | null
           budget?: number
           business_id?: string
           category?: string | null
           created_at?: string
           deadline?: string | null
+          deliverables?: string | null
           description?: string
           id?: string
           location?: Database["public"]["Enums"]["location_type"]
@@ -190,8 +249,50 @@ export type Database = {
           },
         ]
       }
+      messages: {
+        Row: {
+          attachment_urls: string[] | null
+          created_at: string
+          hire_id: string
+          id: string
+          message_text: string
+          sender_id: string
+        }
+        Insert: {
+          attachment_urls?: string[] | null
+          created_at?: string
+          hire_id: string
+          id?: string
+          message_text: string
+          sender_id: string
+        }
+        Update: {
+          attachment_urls?: string[] | null
+          created_at?: string
+          hire_id?: string
+          id?: string
+          message_text?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_hire_id_fkey"
+            columns: ["hire_id"]
+            isOneToOne: false
+            referencedRelation: "hires"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
+          admin_payout_proof_uploaded_at: string | null
+          admin_payout_proof_url: string | null
+          admin_verified_at: string | null
+          admin_verified_by: string | null
+          business_proof_reference: string | null
+          business_proof_uploaded_at: string | null
+          business_proof_url: string | null
           created_at: string
           currency: string
           gig_amount: number
@@ -199,6 +300,7 @@ export type Database = {
           id: string
           paid_to_student_at: string | null
           payout_method: string | null
+          payout_method_label: string | null
           payout_reference: string | null
           platform_fee: number
           shopify_checkout_url: string | null
@@ -208,6 +310,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_payout_proof_uploaded_at?: string | null
+          admin_payout_proof_url?: string | null
+          admin_verified_at?: string | null
+          admin_verified_by?: string | null
+          business_proof_reference?: string | null
+          business_proof_uploaded_at?: string | null
+          business_proof_url?: string | null
           created_at?: string
           currency?: string
           gig_amount: number
@@ -215,6 +324,7 @@ export type Database = {
           id?: string
           paid_to_student_at?: string | null
           payout_method?: string | null
+          payout_method_label?: string | null
           payout_reference?: string | null
           platform_fee: number
           shopify_checkout_url?: string | null
@@ -224,6 +334,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_payout_proof_uploaded_at?: string | null
+          admin_payout_proof_url?: string | null
+          admin_verified_at?: string | null
+          admin_verified_by?: string | null
+          business_proof_reference?: string | null
+          business_proof_uploaded_at?: string | null
+          business_proof_url?: string | null
           created_at?: string
           currency?: string
           gig_amount?: number
@@ -231,6 +348,7 @@ export type Database = {
           id?: string
           paid_to_student_at?: string | null
           payout_method?: string | null
+          payout_method_label?: string | null
           payout_reference?: string | null
           platform_fee?: number
           shopify_checkout_url?: string | null
@@ -249,19 +367,74 @@ export type Database = {
           },
         ]
       }
+      platform_bank_accounts: {
+        Row: {
+          account_number: string | null
+          account_title: string | null
+          bank_name: string | null
+          created_at: string
+          easypaisa_number: string | null
+          iban: string | null
+          id: string
+          instructions: string | null
+          is_active: boolean
+          jazzcash_number: string | null
+          label: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          account_number?: string | null
+          account_title?: string | null
+          bank_name?: string | null
+          created_at?: string
+          easypaisa_number?: string | null
+          iban?: string | null
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          jazzcash_number?: string | null
+          label: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string | null
+          account_title?: string | null
+          bank_name?: string | null
+          created_at?: string
+          easypaisa_number?: string | null
+          iban?: string | null
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          jazzcash_number?: string | null
+          label?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           availability: string | null
           avatar_url: string | null
           bio: string | null
+          certifications: string[] | null
           company_description: string | null
           company_name: string | null
           company_website: string | null
+          contact_email: string | null
+          contact_number: string | null
           created_at: string
           degree: string | null
           full_name: string | null
           graduation_year: number | null
           id: string
+          instagram_url: string | null
+          is_business_verified: boolean
+          is_student_verified: boolean
+          linkedin_url: string | null
           portfolio_links: string[] | null
           preferred_work_type: Database["public"]["Enums"]["work_type"] | null
           resume_url: string | null
@@ -274,14 +447,21 @@ export type Database = {
           availability?: string | null
           avatar_url?: string | null
           bio?: string | null
+          certifications?: string[] | null
           company_description?: string | null
           company_name?: string | null
           company_website?: string | null
+          contact_email?: string | null
+          contact_number?: string | null
           created_at?: string
           degree?: string | null
           full_name?: string | null
           graduation_year?: number | null
           id?: string
+          instagram_url?: string | null
+          is_business_verified?: boolean
+          is_student_verified?: boolean
+          linkedin_url?: string | null
           portfolio_links?: string[] | null
           preferred_work_type?: Database["public"]["Enums"]["work_type"] | null
           resume_url?: string | null
@@ -294,14 +474,21 @@ export type Database = {
           availability?: string | null
           avatar_url?: string | null
           bio?: string | null
+          certifications?: string[] | null
           company_description?: string | null
           company_name?: string | null
           company_website?: string | null
+          contact_email?: string | null
+          contact_number?: string | null
           created_at?: string
           degree?: string | null
           full_name?: string | null
           graduation_year?: number | null
           id?: string
+          instagram_url?: string | null
+          is_business_verified?: boolean
+          is_student_verified?: boolean
+          linkedin_url?: string | null
           portfolio_links?: string[] | null
           preferred_work_type?: Database["public"]["Enums"]["work_type"] | null
           resume_url?: string | null
@@ -311,6 +498,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      reviews: {
+        Row: {
+          created_at: string
+          hire_id: string
+          id: string
+          rating: number
+          reviewer_id: string
+          reviewer_role: string
+          reviewee_id: string
+          review_text: string | null
+        }
+        Insert: {
+          created_at?: string
+          hire_id: string
+          id?: string
+          rating: number
+          reviewer_id: string
+          reviewer_role: string
+          reviewee_id: string
+          review_text?: string | null
+        }
+        Update: {
+          created_at?: string
+          hire_id?: string
+          id?: string
+          rating?: number
+          reviewer_id?: string
+          reviewer_role?: string
+          reviewee_id?: string
+          review_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_hire_id_fkey"
+            columns: ["hire_id"]
+            isOneToOne: false
+            referencedRelation: "hires"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       submissions: {
         Row: {

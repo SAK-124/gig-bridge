@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatPKR } from "@/lib/payments";
 import { fetchProfileMap } from "@/lib/profileMaps";
-import { Calendar, Loader2, MapPin } from "lucide-react";
+import { Calendar, Loader2, MapPin, Package, CheckSquare } from "lucide-react";
 
 const BusinessGigDetail = () => {
   const { id } = useParams();
@@ -51,6 +51,26 @@ const BusinessGigDetail = () => {
         </div>
         {gig.category && <Badge variant="secondary">{gig.category}</Badge>}
         <p className="whitespace-pre-wrap text-foreground/85">{gig.description}</p>
+        {gig.deliverables && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-sm font-semibold"><Package className="h-4 w-4 text-primary" />Deliverables</div>
+            <p className="text-sm text-foreground/85 whitespace-pre-wrap">{gig.deliverables}</p>
+          </div>
+        )}
+        {gig.acceptance_criteria && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-sm font-semibold"><CheckSquare className="h-4 w-4 text-success" />Acceptance criteria</div>
+            <p className="text-sm text-foreground/85 whitespace-pre-wrap">{gig.acceptance_criteria}</p>
+          </div>
+        )}
+        {gig.brief && (
+          <div className="space-y-2 pt-1 border-t border-border/60">
+            {gig.brief.scope_included && <div><span className="text-xs font-medium text-muted-foreground">Included: </span><span className="text-sm">{gig.brief.scope_included}</span></div>}
+            {gig.brief.scope_excluded && <div><span className="text-xs font-medium text-muted-foreground">Not included: </span><span className="text-sm">{gig.brief.scope_excluded}</span></div>}
+            {gig.brief.revision_count != null && <div><span className="text-xs font-medium text-muted-foreground">Revisions: </span><span className="text-sm">{gig.brief.revision_count}</span></div>}
+            {gig.brief.experience_level && <div><span className="text-xs font-medium text-muted-foreground">Level: </span><span className="text-sm capitalize">{gig.brief.experience_level}</span></div>}
+          </div>
+        )}
         {gig.required_skills?.length > 0 && <div className="flex flex-wrap gap-1.5">{gig.required_skills.map((s: string) => <Badge key={s} variant="outline">{s}</Badge>)}</div>}
         {gig.attachments?.length > 0 && (
           <div className="space-y-1">

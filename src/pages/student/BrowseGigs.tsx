@@ -20,6 +20,7 @@ interface Gig {
   required_skills: string[] | null;
   business_id: string;
   company_name?: string | null;
+  applicant_count?: number;
 }
 
 const BrowseGigs = () => {
@@ -31,13 +32,17 @@ const BrowseGigs = () => {
   useEffect(() => {
     supabase
       .from("gigs")
-      .select("*")
+      .select("*, applications(id)")
       .eq("status", "open")
       .order("created_at", { ascending: false })
       .then(async ({ data }) => {
         const rows = (data as any[]) || [];
         const profileMap = await fetchProfileMap(rows.map((g) => g.business_id), "company_name");
-        setGigs(rows.map((g) => ({ ...g, company_name: profileMap.get(g.business_id)?.company_name || null })));
+        setGigs(rows.map((g) => ({
+          ...g,
+          company_name: profileMap.get(g.business_id)?.company_name || null,
+          applicant_count: (g.applications || []).length,
+        })));
         setLoading(false);
       });
   }, []);
@@ -100,7 +105,7 @@ const BrowseGigs = () => {
       )}
 
       {loading ? (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-56 rounded-2xl" />)}
         </div>
       ) : filtered.length === 0 ? (
@@ -115,7 +120,7 @@ const BrowseGigs = () => {
           onCtaClick={gigs.length === 0 ? undefined : () => { setQ(""); setActiveCategory("All"); }}
         />
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((g) => (
             <GigCard key={g.id} gig={g} to={`/student/gigs/${g.id}`} />
           ))}

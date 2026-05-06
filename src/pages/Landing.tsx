@@ -8,7 +8,8 @@ import { GigCard } from "@/components/GigCard";
 import { HeroBridge } from "@/assets/illustrations";
 import {
   GraduationCap, Briefcase, ShieldCheck, BadgeCheck, Wallet, Send, FileCheck2,
-  UserPlus, FileSearch, ListChecks, Users, ArrowRight, Sparkles, Receipt, Quote
+  UserPlus, FileSearch, ListChecks, Users, ArrowRight, Sparkles, Receipt, Quote,
+  Linkedin, Instagram
 } from "lucide-react";
 import { formatPKR } from "@/lib/payments";
 import { fetchProfileMap } from "@/lib/profileMaps";
@@ -85,26 +86,26 @@ const Landing = () => {
       </header>
 
       {/* Hero */}
-      <section className="container grid lg:grid-cols-2 gap-12 items-center pt-8 pb-20 md:pt-16 md:pb-28">
-        <div className="space-y-7 animate-fade-up">
+      <section className="container grid lg:grid-cols-2 gap-12 items-center pt-8 pb-16 md:pt-16 md:pb-28">
+        <div className="space-y-6 animate-fade-up">
           <span className="inline-flex items-center gap-2 rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary">
             <ShieldCheck className="h-3.5 w-3.5" /> Built for Pakistani students
           </span>
-          <h1 className="font-display text-4xl md:text-6xl font-bold leading-[1.05] text-secondary">
+          <h1 className="font-display text-3xl sm:text-4xl md:text-6xl font-bold leading-[1.05] text-secondary">
             Where Pakistani students meet <span className="text-primary">real opportunities</span>
           </h1>
-          <p className="text-lg text-muted-foreground max-w-xl">
+          <p className="text-base md:text-lg text-muted-foreground max-w-xl">
             Short-term gigs, micro-jobs, tuition work, and student-friendly freelance projects. Apply, deliver, and get paid — protected by Gig Bridge.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Button asChild size="lg" className="rounded-full">
+            <Button asChild size="lg" className="rounded-full w-full sm:w-auto">
               <Link to="/auth?mode=signup&role=student"><GraduationCap className="mr-2 h-5 w-5" />I'm a Student</Link>
             </Button>
-            <Button asChild size="lg" variant="secondary" className="rounded-full">
+            <Button asChild size="lg" variant="secondary" className="rounded-full w-full sm:w-auto">
               <Link to="/auth?mode=signup&role=business"><Briefcase className="mr-2 h-5 w-5" />I'm Hiring</Link>
             </Button>
           </div>
-          <div className="flex items-center gap-6 pt-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-4 pt-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-2"><BadgeCheck className="h-4 w-4 text-success" />Payment protected</div>
             <div className="flex items-center gap-2"><Wallet className="h-4 w-4 text-success" />Easypaisa & bank payouts</div>
           </div>
@@ -147,7 +148,7 @@ const Landing = () => {
             </div>
             <Button asChild variant="ghost"><Link to="/auth?mode=signup&role=student">See all <ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {featured.map((g) => (
               <GigCard key={g.id} gig={g} to={`/auth?mode=signup&role=student`} ctaLabel="Sign in to apply" compact />
             ))}
@@ -262,13 +263,21 @@ const Landing = () => {
       <footer className="container py-10 border-t border-border/60 mt-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <Logo />
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-6">
             <Link to="/" className="hover:text-primary">Home</Link>
             <a href="#how" className="hover:text-primary">How it works</a>
             <Link to="/auth" className="hover:text-primary">Sign in</Link>
             <Link to="/admin/login" className="text-xs opacity-70 hover:opacity-100 hover:text-primary transition-smooth">Admin</Link>
           </div>
-          <div>© {new Date().getFullYear()} Gig Bridge. Built with care in Pakistan.</div>
+          <div className="flex items-center gap-4">
+            <a href="https://www.linkedin.com/company/gig-bridge/" target="_blank" rel="noreferrer" aria-label="LinkedIn" className="hover:text-primary transition-colors">
+              <Linkedin className="h-5 w-5" />
+            </a>
+            <a href="https://www.instagram.com/gig__bridge/" target="_blank" rel="noreferrer" aria-label="Instagram" className="hover:text-primary transition-colors">
+              <Instagram className="h-5 w-5" />
+            </a>
+            <span>© {new Date().getFullYear()} Gig Bridge.</span>
+          </div>
         </div>
       </footer>
     </div>

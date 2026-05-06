@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Lock, Upload, X, Plus } from "lucide-react";
+import { Loader2, Lock, Upload, X, Plus, BadgeCheck } from "lucide-react";
 import { PAKISTAN_UNIVERSITIES } from "@/lib/universities";
 import { SKILL_SUGGESTIONS } from "@/lib/skill-suggestions";
 
@@ -26,6 +26,9 @@ const StudentProfile = () => {
   });
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
+  const [certifications, setCertifications] = useState<string[]>([]);
+  const [certInput, setCertInput] = useState("");
+  const [isVerified, setIsVerified] = useState(false);
   const [bank, setBank] = useState<any>({ account_title: "", bank_name: "", iban: "", easypaisa: "", jazzcash: "", cnic: "" });
 
   useEffect(() => {
@@ -52,6 +55,8 @@ const StudentProfile = () => {
           resume_url: pr.data.resume_url || "",
         });
         setSkills(pr.data.skills || []);
+        setCertifications(pr.data.certifications || []);
+        setIsVerified(pr.data.is_student_verified || false);
       }
       if (b.data) setBank({
         account_title: b.data.account_title || "", bank_name: b.data.bank_name || "", iban: b.data.iban || "",
@@ -71,6 +76,16 @@ const StudentProfile = () => {
 
   const removeSkill = (s: string) => setSkills(skills.filter((x) => x !== s));
 
+  const addCert = (raw: string) => {
+    const s = raw.trim();
+    if (!s) return;
+    if (certifications.find((x) => x.toLowerCase() === s.toLowerCase())) return;
+    setCertifications([...certifications, s]);
+    setCertInput("");
+  };
+
+  const removeCert = (s: string) => setCertifications(certifications.filter((x) => x !== s));
+
   const save = async () => {
     if (!user) return;
     setSaving(true);
@@ -82,6 +97,7 @@ const StudentProfile = () => {
       degree: p.degree.trim() || null,
       graduation_year: p.graduation_year ? parseInt(String(p.graduation_year)) : null,
       skills,
+      certifications,
       bio: p.bio.trim() || null,
       availability: p.availability.trim() || null,
       preferred_work_type: p.preferred_work_type,
@@ -113,9 +129,16 @@ const StudentProfile = () => {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div>
-        <h1 className="font-display text-3xl font-bold text-secondary">My profile</h1>
-        <p className="text-muted-foreground">Help businesses get to know you.</p>
+      <div className="flex flex-wrap items-start gap-3">
+        <div>
+          <h1 className="font-display text-3xl font-bold text-secondary">My profile</h1>
+          <p className="text-muted-foreground">Help businesses get to know you.</p>
+        </div>
+        {isVerified && (
+          <Badge variant="outline" className="mt-1 bg-success/15 text-success border-success/40 flex items-center gap-1">
+            <BadgeCheck className="h-3.5 w-3.5" />Verified Student
+          </Badge>
+        )}
       </div>
 
       <Card className="p-6 rounded-2xl border-border/60 space-y-4">
@@ -166,6 +189,28 @@ const StudentProfile = () => {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="sm:col-span-2 space-y-2">
+            <Label>Certifications</Label>
+            <div className="flex flex-wrap gap-1.5 min-h-[2.25rem] rounded-md border border-input bg-background px-2 py-1.5">
+              {certifications.length === 0 && <span className="text-xs text-muted-foreground self-center px-1">No certifications yet.</span>}
+              {certifications.map((c) => (
+                <Badge key={c} variant="secondary" className="px-2 py-1 gap-1">
+                  {c}
+                  <button type="button" onClick={() => removeCert(c)} aria-label={`Remove ${c}`} className="hover:text-destructive"><X className="h-3 w-3" /></button>
+                </Badge>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={certInput}
+                onChange={(e) => setCertInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addCert(certInput); } }}
+                placeholder="e.g. Google UX Design, AWS Cloud Practitioner"
+              />
+              <Button type="button" variant="outline" onClick={() => addCert(certInput)}><Plus className="h-4 w-4" /></Button>
+            </div>
           </div>
 
           <div className="sm:col-span-2"><Label>Bio</Label><Textarea rows={3} value={p.bio} onChange={(e) => setP({ ...p, bio: e.target.value })} maxLength={500} placeholder="A short, friendly intro businesses will read first." /></div>
