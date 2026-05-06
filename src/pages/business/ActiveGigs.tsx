@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/StatusBadge";
+import { StorageObjectButton } from "@/components/StorageObjectButton";
 import { fetchProfileMap } from "@/lib/profileMaps";
 import { HireChat } from "@/components/HireChat";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { paymentDisplayStatus } from "@/lib/payments";
 import { toast } from "sonner";
 import { Loader2, Check, RotateCcw, ShieldAlert, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 
@@ -24,7 +26,7 @@ const ActiveGigs = () => {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase.from("hires").select("id, status, student_id, gigs(title), submissions(id, message, link_url, file_url, created_at)").eq("business_id", user.id).order("created_at", { ascending: false });
+    const { data } = await supabase.from("hires").select("id, status, student_id, gigs(title), payments(status, business_proof_url), submissions(id, message, link_url, file_url, created_at)").eq("business_id", user.id).order("created_at", { ascending: false });
     const profileMap = await fetchProfileMap((data || []).map((h: any) => h.student_id), "full_name");
     setHires((data || []).map((h: any) => ({ ...h, profiles: profileMap.get(h.student_id) || null })));
     setLoading(false);
@@ -89,6 +91,8 @@ const ActiveGigs = () => {
             const sub = h.submissions?.[h.submissions.length - 1];
             const isExpanded = expanded[h.id];
             const df = disputeForm[h.id];
+            const paymentStatus = paymentDisplayStatus(h.payments?.status, !!h.payments?.business_proof_url);
+            const fileIsExternal = typeof sub?.file_url === "string" && /^https?:\/\//i.test(sub.file_url);
             return (
               <Card key={h.id} className="p-5 rounded-2xl border-border/60">
                 <div className="flex flex-wrap justify-between items-start gap-3 mb-3">
@@ -108,7 +112,23 @@ const ActiveGigs = () => {
                     <div className="font-medium text-xs uppercase text-muted-foreground">Latest submission</div>
                     <p className="whitespace-pre-wrap">{sub.message}</p>
                     {sub.link_url && <a href={sub.link_url} target="_blank" rel="noreferrer" className="text-primary hover:underline text-xs">{sub.link_url}</a>}
-                    {sub.file_url && <a href={sub.file_url} target="_blank" rel="noreferrer" className="block text-primary hover:underline text-xs">File: {sub.file_url}</a>}
+                    {sub.file_url && (
+                      fileIsExternal ? (
+                        <a href={sub.file_url} target="_blank" rel="noreferrer" className="block text-primary hover:underline text-xs">Open submitted file</a>
+                      ) : (
+                        <div className="pt-1">
+                          <StorageObjectButton bucket="submission-files" path={sub.file_url} label="Open submitted file" size="sm" />
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+                {h.status === "awaiting_payment" && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <Button size="sm" onClick={() => navigate(`/business/payments/${h.id}/transfer`)}>
+                      {paymentStatus === "awaiting_proof" ? "Send transfer" : "View payment status"}
+                    </Button>
+                    <StatusBadge status={paymentStatus} />
                   </div>
                 )}
                 {h.status === "submitted" && (

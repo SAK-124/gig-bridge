@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Loader2, GraduationCap, BadgeCheck, ExternalLink, FileText, Star } from "lucide-react";
+import { StorageObjectButton } from "@/components/StorageObjectButton";
+import { Loader2, GraduationCap, BadgeCheck, ExternalLink, Star } from "lucide-react";
 
 interface Props {
   studentId: string;
@@ -38,10 +38,6 @@ export const StudentProfileSheet = ({ studentId, open, onClose }: Props) => {
       setLoading(false);
     });
   }, [open, studentId]);
-
-  const resumeUrl = profile?.resume_url
-    ? supabase.storage.from("resumes").getPublicUrl(profile.resume_url).data.publicUrl
-    : null;
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -144,14 +140,10 @@ export const StudentProfileSheet = ({ studentId, open, onClose }: Props) => {
             )}
 
             {/* Resume */}
-            {resumeUrl && (
+            {profile.resume_url && (
               <div>
                 <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Resume</div>
-                <Button asChild variant="outline" size="sm">
-                  <a href={resumeUrl} target="_blank" rel="noreferrer">
-                    <FileText className="h-4 w-4 mr-2" />Download resume
-                  </a>
-                </Button>
+                <StorageObjectButton bucket="resumes" path={profile.resume_url} label="Download resume" />
               </div>
             )}
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/StatusBadge";
 import { HireChat } from "@/components/HireChat";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { StorageObjectButton } from "@/components/StorageObjectButton";
 import { Loader2, Upload, ShieldAlert, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,8 +22,15 @@ const ActiveWork = () => {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ message: "", link_url: "", file_url: "" });
   const [activeHire, setActiveHire] = useState<string | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [disputeForm, setDisputeForm] = useState<Record<string, { open: boolean; reason: string; saving: boolean }>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const resetSubmissionForm = () => {
+    setForm({ message: "", link_url: "", file_url: "" });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const load = async () => {
     if (!user) return;
@@ -32,6 +40,21 @@ const ActiveWork = () => {
   };
 
   useEffect(() => { load(); }, [user]);
+
+  const uploadSubmissionFile = async (file?: File | null) => {
+    if (!activeHire || !file) return;
+    setUploadingFile(true);
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+    const path = `${activeHire}/student-${Date.now()}-${safeName}`;
+    const { error } = await supabase.storage.from("submission-files").upload(path, file, {
+      upsert: false,
+      contentType: file.type || "application/octet-stream",
+    });
+    setUploadingFile(false);
+    if (error) return toast.error(error.message);
+    setForm((prev) => ({ ...prev, file_url: path }));
+    toast.success("Submission file uploaded.");
+  };
 
   const submitWork = async () => {
     if (!activeHire) return;
@@ -46,7 +69,7 @@ const ActiveWork = () => {
     setSubmitting(false);
     if (subErr) return toast.error(subErr.message);
     toast.success("Work submitted! Waiting for business approval.");
-    setForm({ message: "", link_url: "", file_url: "" });
+    resetSubmissionForm();
     setActiveHire(null);
     load();
   };
@@ -103,7 +126,7 @@ const ActiveWork = () => {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {["payment_received", "in_progress", "revision_requested"].includes(h.status) && (
-                    <Dialog open={activeHire === h.id} onOpenChange={(o) => setActiveHire(o ? h.id : null)}>
+                    <Dialog open={activeHire === h.id} onOpenChange={(o) => { setActiveHire(o ? h.id : null); if (!o) resetSubmissionForm(); }}>
                       <DialogTrigger asChild>
                         <Button size="sm"><Upload className="h-4 w-4 mr-2" />Submit work</Button>
                       </DialogTrigger>
@@ -112,7 +135,23 @@ const ActiveWork = () => {
                         <div className="space-y-3">
                           <div><Label>Message</Label><Textarea rows={4} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Describe what you've delivered..." className="text-base" /></div>
                           <div><Label>Link (optional)</Label><Input value={form.link_url} onChange={(e) => setForm({ ...form, link_url: e.target.value })} placeholder="https://..." className="text-base" /></div>
-                          <div><Label>File link (optional)</Label><Input value={form.file_url} onChange={(e) => setForm({ ...form, file_url: e.target.value })} placeholder="Google Drive, Dropbox, or other file URL" className="text-base" /></div>
+                          <div className="space-y-2">
+                            <Label>File upload (optional)</Label>
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.png,.jpg,.jpeg,.webp"
+                              className="hidden"
+                              onChange={(e) => uploadSubmissionFile(e.target.files?.[0])}
+                            />
+                            <div className="flex flex-wrap gap-2">
+                              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingFile}>
+                                {uploadingFile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Upload file
+                              </Button>
+                              {form.file_url && <StorageObjectButton bucket="submission-files" path={form.file_url} label="Open uploaded file" />}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Upload the final file directly here, or leave this blank and submit a link instead.</p>
+                          </div>
                           <Button onClick={submitWork} disabled={submitting} className="w-full">
                             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Submit
                           </Button>
