@@ -69,19 +69,9 @@ const Auth = () => {
     const { data, error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
-      options: { emailRedirectTo: redirectUrl, data: { full_name: form.fullName } },
+      options: { emailRedirectTo: redirectUrl, data: { full_name: form.fullName, role: form.role } },
     });
     if (error) { setLoading(false); return toast.error(error.message); }
-
-    if (data.user) {
-      const { error: roleErr } = await supabase
-        .from("user_roles")
-        .insert({ user_id: data.user.id, role: form.role });
-      if (roleErr && !/duplicate|already/i.test(roleErr.message)) {
-        setLoading(false);
-        return toast.error(`Account created but role assignment failed: ${roleErr.message}. Sign in and contact support.`);
-      }
-    }
 
     setLoading(false);
     if (data.session) {

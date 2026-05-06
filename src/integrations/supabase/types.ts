@@ -150,8 +150,8 @@ export type Database = {
           business_id: string
           category: string | null
           created_at: string
-          deadline: string | null
           deliverables: string | null
+          deadline: string | null
           description: string
           id: string
           location: Database["public"]["Enums"]["location_type"]
@@ -169,8 +169,8 @@ export type Database = {
           business_id: string
           category?: string | null
           created_at?: string
-          deadline?: string | null
           deliverables?: string | null
+          deadline?: string | null
           description: string
           id?: string
           location?: Database["public"]["Enums"]["location_type"]
@@ -188,8 +188,8 @@ export type Database = {
           business_id?: string
           category?: string | null
           created_at?: string
-          deadline?: string | null
           deliverables?: string | null
+          deadline?: string | null
           description?: string
           id?: string
           location?: Database["public"]["Enums"]["location_type"]
@@ -412,6 +412,75 @@ export type Database = {
           label?: string
           sort_order?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      disputes: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          evidence_urls: string[] | null
+          hire_id: string
+          id: string
+          reason: string
+          resolution: "release" | "refund" | "revision" | null
+          resolved_at: string | null
+          raised_by_id: string
+          raised_by_role: "student" | "business"
+          status: "open" | "reviewing" | "resolved"
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          evidence_urls?: string[] | null
+          hire_id: string
+          id?: string
+          reason: string
+          resolution?: "release" | "refund" | "revision" | null
+          resolved_at?: string | null
+          raised_by_id: string
+          raised_by_role: "student" | "business"
+          status?: "open" | "reviewing" | "resolved"
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          evidence_urls?: string[] | null
+          hire_id?: string
+          id?: string
+          reason?: string
+          resolution?: "release" | "refund" | "revision" | null
+          resolved_at?: string | null
+          raised_by_id?: string
+          raised_by_role?: "student" | "business"
+          status?: "open" | "reviewing" | "resolved"
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          attachment_urls: string[] | null
+          created_at: string
+          hire_id: string
+          id: string
+          message_text: string
+          sender_id: string
+        }
+        Insert: {
+          attachment_urls?: string[] | null
+          created_at?: string
+          hire_id: string
+          id?: string
+          message_text: string
+          sender_id: string
+        }
+        Update: {
+          attachment_urls?: string[] | null
+          created_at?: string
+          hire_id?: string
+          id?: string
+          message_text?: string
+          sender_id?: string
         }
         Relationships: []
       }
