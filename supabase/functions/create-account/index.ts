@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       });
       await admin.from("user_roles").upsert(
         { user_id: existingUser.id, role: body.role },
-        { onConflict: "user_id" },
+        { onConflict: "user_id,role" },
       );
       return json({ email: body.email, password: body.password });
     }
@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
 
     await admin.from("user_roles").upsert(
       { user_id: data.user.id, role: body.role },
-      { onConflict: "user_id" },
+      { onConflict: "user_id,role" },
     );
     return json({ email: body.email, password: body.password });
   } catch (e) {

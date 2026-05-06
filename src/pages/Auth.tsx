@@ -45,11 +45,30 @@ const Auth = () => {
     const userId = signInData.user?.id;
     if (!userId) { setLoading(false); await supabase.auth.signOut(); return toast.error("Sign-in succeeded but no user was returned. Try again."); }
 
-    const { data: roleRow, error: roleErr } = await supabase
+    let { data: roleRow, error: roleErr } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
       .maybeSingle();
+
+    if (!roleRow?.role) {
+      const metadataRole = signInData.user.user_metadata?.role;
+      if (metadataRole === "student" || metadataRole === "business") {
+        const { error: insertRoleError } = await supabase
+          .from("user_roles")
+          .insert({ user_id: userId, role: metadataRole });
+        if (!insertRoleError || /duplicate/i.test(insertRoleError.message)) {
+          const retry = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", userId)
+            .maybeSingle();
+          roleRow = retry.data;
+          roleErr = retry.error;
+        }
+      }
+    }
+
     setLoading(false);
     if (roleErr) { await supabase.auth.signOut(); return toast.error(`Could not load your role: ${roleErr.message}`); }
     if (!roleRow?.role) { await supabase.auth.signOut(); return toast.error("Account exists but no role is attached. Contact admin to finish setup."); }
