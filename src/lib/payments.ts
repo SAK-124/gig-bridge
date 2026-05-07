@@ -58,3 +58,14 @@ export function paymentDisplayStatus(status: string | null | undefined, hasBusin
   if (status === "refunded") return "refunded";
   return hasBusinessProof ? "awaiting_verification" : "awaiting_proof";
 }
+
+type TrackablePayment = {
+  status: string | null;
+  admin_verified_at?: string | null;
+  paid_to_student_at?: string | null;
+};
+
+export function isConfirmedTransfer(payment: TrackablePayment) {
+  if (!["received", "payout_pending", "paid", "disputed"].includes(payment.status || "")) return false;
+  return Boolean(payment.admin_verified_at || payment.paid_to_student_at);
+}

@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { StorageObjectButton } from "@/components/StorageObjectButton";
 import { Loader2, Upload, ShieldAlert, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
+import { DeleteActionButton } from "@/components/DeleteActionButton";
 
 const ActiveWork = () => {
   const { user } = useAuth();
@@ -34,7 +35,7 @@ const ActiveWork = () => {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase.from("hires").select("id, status, gigs(title, budget), payments(status)").eq("student_id", user.id).order("created_at", { ascending: false });
+    const { data } = await supabase.from("hires").select("id, status, gigs(title, budget), payments(status), submissions(id, message, link_url, file_url, created_at)").eq("student_id", user.id).order("created_at", { ascending: false });
     setHires(data || []);
     setLoading(false);
   };
@@ -96,6 +97,15 @@ const ActiveWork = () => {
     load();
   };
 
+  const deleteSubmission = async (hireId: string, submissionId: string) => {
+    const { data, error } = await supabase.from("submissions").delete().eq("id", submissionId).select("id");
+    if (error) return toast.error(error.message);
+    if (!data?.length) return toast.error("Submission was not deleted. Refresh and try again.");
+    await supabase.from("hires").update({ status: "revision_requested" }).eq("id", hireId);
+    toast.success("Submission deleted. You can upload a revised version.");
+    load();
+  };
+
   const toggleExpand = (id: string) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
@@ -111,6 +121,7 @@ const ActiveWork = () => {
           {hires.map((h) => {
             const isExpanded = expanded[h.id];
             const df = disputeForm[h.id];
+            const latestSubmission = h.submissions?.[h.submissions.length - 1];
             return (
               <Card key={h.id} className="p-5 rounded-2xl border-border/60">
                 <div className="flex flex-wrap justify-between items-start gap-3 mb-3">
@@ -125,6 +136,18 @@ const ActiveWork = () => {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  {latestSubmission && ["submitted", "revision_requested"].includes(h.status) && (
+                    <DeleteActionButton
+                      title="Delete latest submission?"
+                      description="This removes your latest submitted work record and moves the hire back into revision so you can resubmit."
+                      confirmLabel="Delete submission"
+                      variant="outline"
+                      onConfirm={() => deleteSubmission(h.id, latestSubmission.id)}
+                    >
+                      Delete submission
+                    </DeleteActionButton>
+                  )}
+
                   {["payment_received", "in_progress", "revision_requested"].includes(h.status) && (
                     <Dialog open={activeHire === h.id} onOpenChange={(o) => { setActiveHire(o ? h.id : null); if (!o) resetSubmissionForm(); }}>
                       <DialogTrigger asChild>

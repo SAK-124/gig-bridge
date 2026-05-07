@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Briefcase, Users, Wallet, CheckCircle2, ArrowRight, Plus, Send, AlertCircle } from "lucide-react";
-import { formatPKR, paymentDisplayStatus } from "@/lib/payments";
+import { formatPKR, isConfirmedTransfer, paymentDisplayStatus } from "@/lib/payments";
 import { fetchProfileMap } from "@/lib/profileMaps";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
@@ -43,7 +43,7 @@ const BusinessHome = () => {
           ? supabase.from("applications").select("id, status, created_at, gig_id, student_id").in("gig_id", ids).order("created_at", { ascending: false })
           : Promise.resolve({ data: [] as any[] }),
         supabase.from("hires").select("id, status, gig_id").eq("business_id", user.id),
-        supabase.from("payments").select("status, gig_amount, total_amount, business_proof_url, hires!inner(business_id)").eq("hires.business_id", user.id),
+        supabase.from("payments").select("status, gig_amount, total_amount, business_proof_url, admin_verified_at, paid_to_student_at, hires!inner(business_id)").eq("hires.business_id", user.id),
       ]);
 
       const rawApps = appsRes.data || [];
@@ -52,8 +52,8 @@ const BusinessHome = () => {
       const hires = hiresRes.data || [];
       const payments = paymentsRes.data || [];
 
-      const spend = payments
-        .filter((p: any) => ["received", "payout_pending", "paid"].includes(p.status))
+      const confirmedPayments = payments.filter(isConfirmedTransfer);
+      const spend = confirmedPayments
         .reduce((sum: number, p: any) => sum + parseFloat(p.total_amount || "0"), 0);
 
       const awaitingProof = payments.filter((p: any) => p.status === "awaiting" && !p.business_proof_url).length;
@@ -70,10 +70,9 @@ const BusinessHome = () => {
       setTopApplicants(apps.filter((a: any) => a.status === "pending" || a.status === "shortlisted").slice(0, 5));
 
       const buckets: Record<string, number> = { in_flight: 0, awaiting: 0, payout_pending: 0, paid: 0, disputed: 0 };
-      payments.forEach((p: any) => {
+      confirmedPayments.forEach((p: any) => {
         const display = paymentDisplayStatus(p.status, !!p.business_proof_url);
         if (display === "received") buckets.in_flight += 1;
-        else if (display === "awaiting_proof" || display === "awaiting_verification") buckets.awaiting += 1;
         else if (display === "payout_pending") buckets.payout_pending += 1;
         else if (display === "paid") buckets.paid += 1;
         else if (display === "disputed") buckets.disputed += 1;
@@ -156,7 +155,7 @@ const BusinessHome = () => {
         <Card className="rounded-2xl border-border/60 p-5">
           <h2 className="font-semibold text-lg mb-3">Payment status</h2>
           {paymentBreakdown.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No payments yet. Hire a student to start the escrow flow.</p>
+            <p className="text-sm text-muted-foreground">No confirmed payments yet. Hire records awaiting transfer stay in the payments queue.</p>
           ) : (
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">

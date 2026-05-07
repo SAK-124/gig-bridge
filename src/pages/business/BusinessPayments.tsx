@@ -12,6 +12,8 @@ import { RatingPrompt } from "@/components/RatingPrompt";
 import { PaymentShield } from "@/assets/illustrations";
 import { formatPKR, paymentDisplayStatus } from "@/lib/payments";
 import { ArrowRight, ReceiptText, Star } from "lucide-react";
+import { DeleteActionButton } from "@/components/DeleteActionButton";
+import { toast } from "sonner";
 
 const BusinessPayments = () => {
   const { user } = useAuth();
@@ -38,6 +40,14 @@ const BusinessPayments = () => {
   };
 
   useEffect(() => { load(); }, [user]);
+
+  const cancelUnpaidHire = async (hireId: string) => {
+    const { data, error } = await supabase.from("hires").delete().eq("id", hireId).select("id");
+    if (error) return toast.error(error.message);
+    if (!data?.length) return toast.error("Payment/hire was not removed. Refresh and try again.");
+    toast.success("Unpaid hire removed.");
+    load();
+  };
 
   const empty = !loading && rows.length === 0;
 
@@ -95,6 +105,17 @@ const BusinessPayments = () => {
                               <ArrowRight className="h-3.5 w-3.5 ml-1" />
                             </Link>
                           </Button>
+                        )}
+                        {display === "awaiting_proof" && (
+                          <DeleteActionButton
+                            title="Cancel this unpaid hire?"
+                            description="This removes the unpaid hire setup and its awaiting payment record. No paid or verified payment can be removed here."
+                            confirmLabel="Cancel hire"
+                            variant="outline"
+                            onConfirm={() => cancelUnpaidHire(r.id)}
+                          >
+                            Cancel
+                          </DeleteActionButton>
                         )}
                         {r.status === "paid" && !reviewed.has(r.id) && (
                           <Button size="sm" variant="outline" onClick={() => setRatingTarget({

@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth";
+import { AccountDangerZone } from "@/components/AccountDangerZone";
 
 const BusinessSettings = () => (
   <div className="space-y-6 max-w-2xl">
@@ -13,6 +14,7 @@ const BusinessSettings = () => (
       <p className="text-sm text-muted-foreground">Company, gig, applicant, and payment records are connected to this signed-in account.</p>
       <Button variant="outline" onClick={signOut}>Sign out</Button>
     </Card>
+    <AccountDangerZone roleLabel="business" />
   </div>
 );
 

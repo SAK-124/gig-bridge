@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { paymentDisplayStatus } from "@/lib/payments";
 import { toast } from "sonner";
 import { Loader2, Check, RotateCcw, ShieldAlert, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { DeleteActionButton } from "@/components/DeleteActionButton";
 
 const ActiveGigs = () => {
   const { user } = useAuth();
@@ -73,6 +74,16 @@ const ActiveGigs = () => {
     load();
   };
 
+  const cancelUnpaidHire = async (hireId: string) => {
+    setActing(hireId);
+    const { data, error } = await supabase.from("hires").delete().eq("id", hireId).select("id");
+    setActing(null);
+    if (error) return toast.error(error.message);
+    if (!data?.length) return toast.error("Hire was not removed. Refresh and try again.");
+    toast.success("Unpaid hire removed.");
+    load();
+  };
+
   const toggleExpand = (id: string) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" /></div>;
@@ -129,6 +140,18 @@ const ActiveGigs = () => {
                       {paymentStatus === "awaiting_proof" ? "Send transfer" : "View payment status"}
                     </Button>
                     <StatusBadge status={paymentStatus} />
+                    {paymentStatus === "awaiting_proof" && (
+                      <DeleteActionButton
+                        title="Cancel this unpaid hire?"
+                        description="This removes the hire and its awaiting payment record before any transfer proof is uploaded."
+                        confirmLabel="Cancel hire"
+                        variant="outline"
+                        onConfirm={() => cancelUnpaidHire(h.id)}
+                        disabled={acting === h.id}
+                      >
+                        Cancel hire
+                      </DeleteActionButton>
+                    )}
                   </div>
                 )}
                 {h.status === "submitted" && (

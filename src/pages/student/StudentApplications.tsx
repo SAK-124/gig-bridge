@@ -4,19 +4,32 @@ import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DeleteActionButton } from "@/components/DeleteActionButton";
+import { toast } from "sonner";
 
 const StudentApplications = () => {
   const { user } = useAuth();
   const [apps, setApps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = async () => {
     if (!user) return;
-    supabase.from("applications").select("id, status, created_at, cover_letter, gigs(title, budget)").eq("student_id", user.id).order("created_at", { ascending: false }).then(({ data }) => {
-      setApps(data || []);
-      setLoading(false);
-    });
+    const { data } = await supabase.from("applications").select("id, status, created_at, cover_letter, gigs(title, budget)").eq("student_id", user.id).order("created_at", { ascending: false });
+    setApps(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
   }, [user]);
+
+  const withdrawApplication = async (id: string) => {
+    const { data, error } = await supabase.from("applications").delete().eq("id", id).select("id");
+    if (error) return toast.error(error.message);
+    if (!data?.length) return toast.error("Application was not withdrawn. Refresh and try again.");
+    toast.success("Application withdrawn.");
+    load();
+  };
 
   return (
     <div className="space-y-6">
@@ -34,7 +47,20 @@ const StudentApplications = () => {
                 <div className="font-semibold">{a.gigs?.title}</div>
                 <div className="text-xs text-muted-foreground mt-1">Applied {new Date(a.created_at).toLocaleDateString()}</div>
               </div>
-              <StatusBadge status={a.status} />
+              <div className="flex items-center gap-2">
+                <StatusBadge status={a.status} />
+                {a.status !== "hired" && (
+                  <DeleteActionButton
+                    title="Withdraw application?"
+                    description="This removes your application from the business review queue."
+                    confirmLabel="Withdraw"
+                    variant="outline"
+                    onConfirm={() => withdrawApplication(a.id)}
+                  >
+                    Withdraw
+                  </DeleteActionButton>
+                )}
+              </div>
             </Card>
           ))}
         </div>

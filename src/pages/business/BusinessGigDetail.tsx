@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
@@ -9,10 +9,13 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatPKR } from "@/lib/payments";
 import { fetchProfileMap } from "@/lib/profileMaps";
 import { Calendar, Loader2, MapPin, Package, CheckSquare } from "lucide-react";
+import { DeleteActionButton } from "@/components/DeleteActionButton";
+import { toast } from "sonner";
 
 const BusinessGigDetail = () => {
   const { id } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [gig, setGig] = useState<any>(null);
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +32,15 @@ const BusinessGigDetail = () => {
     })();
   }, [id, user]);
 
+  const deleteGig = async () => {
+    if (!id) return;
+    const { data, error } = await supabase.from("gigs").delete().eq("id", id).select("id");
+    if (error) return toast.error(error.message);
+    if (!data?.length) return toast.error("Gig was not deleted. Refresh and try again.");
+    toast.success("Gig deleted.");
+    navigate("/business/gigs");
+  };
+
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" /></div>;
   if (!gig) return <Card className="p-12 rounded-2xl text-center text-muted-foreground">Gig not found.</Card>;
 
@@ -44,9 +56,18 @@ const BusinessGigDetail = () => {
               {gig.deadline && <span className="flex items-center gap-1"><Calendar className="h-4 w-4" />{new Date(gig.deadline).toLocaleDateString()}</span>}
             </div>
           </div>
-          <div className="text-right">
+          <div className="flex flex-col items-end gap-2 text-right">
             <div className="font-display text-2xl font-bold text-primary">{formatPKR(gig.budget)}</div>
             <StatusBadge status={gig.status} />
+            <DeleteActionButton
+              title="Delete this gig?"
+              description="This removes the gig and any applications or hire records connected to it."
+              confirmLabel="Delete gig"
+              variant="outline"
+              onConfirm={deleteGig}
+            >
+              Delete gig
+            </DeleteActionButton>
           </div>
         </div>
         {gig.category && <Badge variant="secondary">{gig.category}</Badge>}

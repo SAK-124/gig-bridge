@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, BadgeCheck } from "lucide-react";
+import { DeleteActionButton } from "@/components/DeleteActionButton";
 
 const CompanyProfile = () => {
   const { user } = useAuth();
@@ -53,6 +54,15 @@ const CompanyProfile = () => {
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Saved!");
+  };
+
+  const deleteProfile = async () => {
+    if (!user) return;
+    const { data, error } = await supabase.from("profiles").delete().eq("user_id", user.id).select("id");
+    if (error) return toast.error(error.message);
+    if (!data?.length) return toast.error("Profile was not deleted. Refresh and try again.");
+    toast.success("Company profile deleted. Your login account remains active.");
+    window.location.reload();
   };
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" /></div>;
@@ -116,9 +126,21 @@ const CompanyProfile = () => {
         </div>
       </Card>
 
-      <Button onClick={save} disabled={saving} size="lg">
-        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save profile
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={save} disabled={saving} size="lg">
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save profile
+        </Button>
+        <DeleteActionButton
+          title="Delete company profile?"
+          description="This removes only the company profile row. Your login account remains active and you can rebuild the profile by saving this page again."
+          confirmLabel="Delete profile"
+          variant="outline"
+          size="lg"
+          onConfirm={deleteProfile}
+        >
+          Delete profile
+        </DeleteActionButton>
+      </div>
     </div>
   );
 };

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Loader2, Lock, Upload, X, Plus, BadgeCheck } from "lucide-react";
 import { PAKISTAN_UNIVERSITIES } from "@/lib/universities";
 import { SKILL_SUGGESTIONS } from "@/lib/skill-suggestions";
+import { DeleteActionButton } from "@/components/DeleteActionButton";
 
 const StudentProfile = () => {
   const { user } = useAuth();
@@ -121,6 +122,24 @@ const StudentProfile = () => {
     if (error) return toast.error(error.message);
     setP({ ...p, resume_url: path });
     toast.success("Resume uploaded. Save your profile to keep it linked.");
+  };
+
+  const deleteProfile = async () => {
+    if (!user) return;
+    const { data, error } = await supabase.from("profiles").delete().eq("user_id", user.id).select("id");
+    if (error) return toast.error(error.message);
+    if (!data?.length) return toast.error("Profile was not deleted. Refresh and try again.");
+    toast.success("Profile deleted. Your login account remains active.");
+    window.location.reload();
+  };
+
+  const deletePayoutDetails = async () => {
+    if (!user) return;
+    const { data, error } = await supabase.from("bank_details").delete().eq("user_id", user.id).select("id");
+    if (error) return toast.error(error.message);
+    if (!data?.length) return toast.error("No payout details were deleted.");
+    toast.success("Payout details deleted.");
+    setBank({ account_title: "", bank_name: "", iban: "", easypaisa: "", jazzcash: "", cnic: "" });
   };
 
   const suggestedNotYetPicked = SKILL_SUGGESTIONS.filter((s) => !skills.find((x) => x.toLowerCase() === s.toLowerCase())).slice(0, 12);
@@ -254,9 +273,31 @@ const StudentProfile = () => {
         </div>
       </Card>
 
-      <Button onClick={save} disabled={saving} size="lg">
-        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save profile
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={save} disabled={saving} size="lg">
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save profile
+        </Button>
+        <DeleteActionButton
+          title="Delete payout details?"
+          description="This removes only your private bank/Easypaisa/JazzCash payout details. Your profile and login remain."
+          confirmLabel="Delete payout details"
+          variant="outline"
+          size="lg"
+          onConfirm={deletePayoutDetails}
+        >
+          Delete payout details
+        </DeleteActionButton>
+        <DeleteActionButton
+          title="Delete profile data?"
+          description="This removes your student profile row only. Your login account remains active and you can rebuild the profile by saving this page again."
+          confirmLabel="Delete profile"
+          variant="outline"
+          size="lg"
+          onConfirm={deleteProfile}
+        >
+          Delete profile
+        </DeleteActionButton>
+      </div>
     </div>
   );
 };

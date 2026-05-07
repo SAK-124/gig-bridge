@@ -16,9 +16,10 @@ import { PaymentProofUploader } from "@/components/PaymentProofUploader";
 import { PaymentProofViewer } from "@/components/PaymentProofViewer";
 import { formatPKR, paymentDisplayStatus } from "@/lib/payments";
 import { toast } from "sonner";
-import { Loader2, Wallet, Users, Briefcase, ShieldAlert, Sparkles, RefreshCw, ShieldCheck, BadgeCheck, Eye, Plus, Pencil, Trash2, Building2 } from "lucide-react";
+import { Loader2, Wallet, Users, Briefcase, ShieldAlert, Sparkles, ShieldCheck, BadgeCheck, Eye, Plus, Pencil, Building2 } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { StorageObjectButton } from "@/components/StorageObjectButton";
+import { DeleteActionButton } from "@/components/DeleteActionButton";
 
 type PayoutForm = { method: string; reference: string; proofPath: string };
 
@@ -33,6 +34,8 @@ const emptyBankForm: BankAccountForm = {
   iban: "", account_number: "", easypaisa_number: "",
   jazzcash_number: "", instructions: "",
 };
+
+const deletedRow = (data: unknown[] | null | undefined) => Array.isArray(data) && data.length > 0;
 
 const AdminDashboard = () => {
   const { role, loading: roleLoading, user } = useUserRole();
@@ -186,7 +189,11 @@ const AdminDashboard = () => {
   };
 
   const deleteBankAccount = async (id: string) => {
-    await supabase.from("platform_bank_accounts").update({ is_active: false }).eq("id", id);
+    setDeletingId(id);
+    const { data, error } = await supabase.from("platform_bank_accounts").update({ is_active: false }).eq("id", id).select("id");
+    setDeletingId(null);
+    if (error) return toast.error(error.message);
+    if (!deletedRow(data)) return toast.error("Nothing changed. Refresh and try again.");
     toast.success("Account deactivated.");
     load();
   };
@@ -202,32 +209,62 @@ const AdminDashboard = () => {
   };
 
   const deleteGig = async (id: string) => {
-    if (!confirm("Delete this gig? This cannot be undone.")) return;
     setDeletingId(id);
-    const { error } = await supabase.from("gigs").delete().eq("id", id);
+    const { data, error } = await supabase.from("gigs").delete().eq("id", id).select("id");
     setDeletingId(null);
     if (error) return toast.error(error.message);
+    if (!deletedRow(data)) return toast.error("Gig was not deleted. Refresh and try again.");
     toast.success("Gig deleted.");
     load();
   };
 
-  const deleteUser = async (id: string) => {
-    if (!confirm("Remove this user? This cannot be undone.")) return;
-    setDeletingId(id);
-    const { error } = await supabase.from("profiles").delete().eq("id", id);
+  const deleteProfile = async (profile: any) => {
+    setDeletingId(`profile-${profile.id}`);
+    const { data, error } = await supabase.from("profiles").delete().eq("id", profile.id).select("id");
     setDeletingId(null);
     if (error) return toast.error(error.message);
+    if (!deletedRow(data)) return toast.error("Profile was not deleted. Refresh and try again.");
+    toast.success("Profile deleted. Login account remains active.");
+    load();
+  };
+
+  const deleteUser = async (profile: any) => {
+    setDeletingId(profile.id);
+    const { data, error } = await supabase.rpc("admin_delete_user" as any, { target_user_id: profile.user_id } as any);
+    setDeletingId(null);
+    if (error) return toast.error(error.message);
+    if (!data) return toast.error("User was not deleted. Refresh and try again.");
     toast.success("User removed.");
     load();
   };
 
   const deletePayment = async (id: string) => {
-    if (!confirm("Delete this payment record? This cannot be undone.")) return;
     setDeletingId(id);
-    const { error } = await supabase.from("payments").delete().eq("id", id);
+    const { data, error } = await supabase.from("payments").delete().eq("id", id).select("id");
     setDeletingId(null);
     if (error) return toast.error(error.message);
+    if (!deletedRow(data)) return toast.error("Payment was not deleted. Refresh and try again.");
     toast.success("Payment record deleted.");
+    load();
+  };
+
+  const deleteDispute = async (id: string) => {
+    setDeletingId(id);
+    const { data, error } = await supabase.from("disputes").delete().eq("id", id).select("id");
+    setDeletingId(null);
+    if (error) return toast.error(error.message);
+    if (!deletedRow(data)) return toast.error("Dispute was not deleted. Refresh and try again.");
+    toast.success("Dispute deleted.");
+    load();
+  };
+
+  const deleteSubmission = async (id: string) => {
+    setDeletingId(id);
+    const { data, error } = await supabase.from("submissions").delete().eq("id", id).select("id");
+    setDeletingId(null);
+    if (error) return toast.error(error.message);
+    if (!deletedRow(data)) return toast.error("Submission was not deleted. Refresh and try again.");
+    toast.success("Submission deleted.");
     load();
   };
 
@@ -433,9 +470,13 @@ const AdminDashboard = () => {
                                 Release
                               </Button>
                             )}
-                            <Button size="sm" variant="ghost" onClick={() => deletePayment(p.id)} disabled={deletingId === p.id}>
-                              {deletingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 text-destructive" />}
-                            </Button>
+                            <DeleteActionButton
+                              title="Delete payment record?"
+                              description="This deletes this payment row only. Related hire records remain unless they are removed separately."
+                              confirmLabel="Delete payment"
+                              onConfirm={() => deletePayment(p.id)}
+                              disabled={deletingId === p.id}
+                            />
                           </div>
                         </TableCell>
                       </TableRow>
@@ -469,9 +510,27 @@ const AdminDashboard = () => {
                       <TableCell>{u.company_name || "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{new Date(u.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
-                        <Button size="sm" variant="ghost" onClick={() => deleteUser(u.id)} disabled={deletingId === u.id}>
-                          {deletingId === u.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 text-destructive" />}
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <DeleteActionButton
+                            title="Delete profile only?"
+                            description="This removes the public/profile row, but keeps the user's login account so they can keep signing in and rebuild the profile."
+                            confirmLabel="Delete profile"
+                            variant="outline"
+                            onConfirm={() => deleteProfile(u)}
+                            disabled={deletingId === `profile-${u.id}`}
+                          >
+                            Profile
+                          </DeleteActionButton>
+                          <DeleteActionButton
+                            title="Delete login account?"
+                            description="This removes the auth account. Profile, roles, and records with cascading user links are removed, and the email can sign up again."
+                            confirmLabel="Delete account"
+                            onConfirm={() => deleteUser(u)}
+                            disabled={deletingId === u.id}
+                          >
+                            Account
+                          </DeleteActionButton>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -512,9 +571,13 @@ const AdminDashboard = () => {
                       <TableCell><StatusBadge status={g.status} /></TableCell>
                       <TableCell className="text-sm text-muted-foreground">{new Date(g.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
-                        <Button size="sm" variant="ghost" onClick={() => deleteGig(g.id)} disabled={deletingId === g.id}>
-                          {deletingId === g.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 text-destructive" />}
-                        </Button>
+                        <DeleteActionButton
+                          title="Delete gig?"
+                          description="This deletes the gig and cascades its applications, hires, payments, submissions, messages, disputes, and reviews."
+                          confirmLabel="Delete gig"
+                          onConfirm={() => deleteGig(g.id)}
+                          disabled={deletingId === g.id}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -560,6 +623,7 @@ const AdminDashboard = () => {
                         <TableCell>{Array.isArray(d.payments) ? formatPKR(d.payments[0]?.total_amount || 0) : formatPKR(d.payments?.total_amount || 0)}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{new Date(d.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
+                          <div className="flex justify-end gap-2">
                           <Dialog>
                             <DialogTrigger asChild>
                               <Button size="sm" variant="outline">Resolve</Button>
@@ -584,6 +648,16 @@ const AdminDashboard = () => {
                                             ? <a href={s.file_url} target="_blank" rel="noreferrer" className="block text-primary hover:underline text-xs">Open submitted file</a>
                                             : <StorageObjectButton bucket="submission-files" path={s.file_url} label="Open submitted file" size="sm" />
                                           )}
+                                          <DeleteActionButton
+                                            title="Delete this submission?"
+                                            description="This removes only this submitted work record. The hire and payment rows remain."
+                                            confirmLabel="Delete submission"
+                                            variant="outline"
+                                            onConfirm={() => deleteSubmission(s.id)}
+                                            disabled={deletingId === s.id}
+                                          >
+                                            Delete submission
+                                          </DeleteActionButton>
                                         </div>
                                       );
                                     })}
@@ -622,6 +696,16 @@ const AdminDashboard = () => {
                               </div>
                             </DialogContent>
                           </Dialog>
+                          {disputeRow?.id && (
+                            <DeleteActionButton
+                              title="Delete dispute?"
+                              description="This deletes the dispute record only. The hire, payment, and submissions remain."
+                              confirmLabel="Delete dispute"
+                              onConfirm={() => deleteDispute(disputeRow.id)}
+                              disabled={deletingId === disputeRow.id}
+                            />
+                          )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -687,7 +771,13 @@ const AdminDashboard = () => {
                       </div>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => openEditBank(acc)}><Pencil className="h-3.5 w-3.5 mr-1" />Edit</Button>
-                        <Button size="sm" variant="ghost" onClick={() => deleteBankAccount(acc.id)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                        <DeleteActionButton
+                          title="Deactivate bank account?"
+                          description="This hides the platform bank account from business transfer screens. Existing payment records are not changed."
+                          confirmLabel="Deactivate"
+                          onConfirm={() => deleteBankAccount(acc.id)}
+                          disabled={deletingId === acc.id}
+                        />
                       </div>
                     </div>
                   </Card>
