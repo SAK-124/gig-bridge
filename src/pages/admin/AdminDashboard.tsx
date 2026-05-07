@@ -18,6 +18,7 @@ import { formatPKR, paymentDisplayStatus } from "@/lib/payments";
 import { toast } from "sonner";
 import { Loader2, Wallet, Users, Briefcase, ShieldAlert, Sparkles, RefreshCw, ShieldCheck, BadgeCheck, Eye, Plus, Pencil, Trash2, Building2 } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
+import { StorageObjectButton } from "@/components/StorageObjectButton";
 
 type PayoutForm = { method: string; reference: string; proofPath: string };
 
@@ -36,7 +37,7 @@ const emptyBankForm: BankAccountForm = {
 const AdminDashboard = () => {
   const { role, loading: roleLoading, user } = useUserRole();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ users: 0, gigs: 0, commission: 0, payouts: 0, awaitingVerification: 0 });
+  const [stats, setStats] = useState({ users: 0, gigs: 0, gigsCompleted: 0, commission: 0, payouts: 0, awaitingVerification: 0 });
   const [pendingVerification, setPendingVerification] = useState<any[]>([]);
   const [pendingPayouts, setPendingPayouts] = useState<any[]>([]);
   const [allPayments, setAllPayments] = useState<any[]>([]);
@@ -48,6 +49,7 @@ const AdminDashboard = () => {
   const [payoutForms, setPayoutForms] = useState<Record<string, PayoutForm>>({});
   const [activePayoutId, setActivePayoutId] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [resetting, setResetting] = useState(false);
   const [bankFormOpen, setBankFormOpen] = useState(false);
   const [bankForm, setBankForm] = useState<BankAccountForm>(emptyBankForm);
@@ -67,7 +69,7 @@ const AdminDashboard = () => {
       supabase.from("profiles").select("id, user_id, full_name, university, company_name, created_at").order("created_at", { ascending: false }),
       supabase.from("gigs").select("id, title, budget, status, location, created_at, business_id, profiles:business_id(company_name, full_name)").order("created_at", { ascending: false }),
       supabase.from("payments").select("*, hires(id, student_id, business_id, status, gigs(title, business_id, profiles:business_id(company_name, full_name)), profiles!hires_student_id_fkey(full_name))").order("created_at", { ascending: false }),
-      supabase.from("hires").select("id, status, created_at, gigs(title), profiles!hires_student_id_fkey(full_name), payments(id, status, total_amount, business_proof_url), disputes(id, reason, raised_by_role, status, evidence_urls)").eq("status", "disputed").order("created_at", { ascending: false }),
+      supabase.from("hires").select("id, status, created_at, gigs(title), profiles!hires_student_id_fkey(full_name), payments(id, status, total_amount, business_proof_url), disputes(id, reason, raised_by_role, status, evidence_urls), submissions(id, message, link_url, file_url, created_at)").eq("status", "disputed").order("created_at", { ascending: false }),
       supabase.from("platform_bank_accounts").select("*").order("sort_order"),
     ]);
     const all = paymentsRes.data || [];
@@ -76,14 +78,15 @@ const AdminDashboard = () => {
     setDisputes(disputeRes.data || []);
     setAllPayments(all);
     setBankAccounts(bankRes.data || []);
-    setPendingVerification(all.filter((p: any) => p.status === "awaiting" && p.business_proof_url));
+    setPendingVerification(all.filter((p: any) => p.business_proof_url && !p.admin_verified_at && !["paid", "refunded"].includes(p.status)));
     setPendingPayouts(all.filter((p: any) => p.status === "payout_pending"));
     setStats({
       users: usersRes.data?.length || 0,
       gigs: gigsRes.data?.length || 0,
+      gigsCompleted: all.filter((p: any) => p.status === "paid").length,
       commission: all.filter((p: any) => p.status === "paid").reduce((s: number, p: any) => s + parseFloat(p.platform_fee), 0),
       payouts: all.filter((p: any) => p.status === "payout_pending").length,
-      awaitingVerification: all.filter((p: any) => p.status === "awaiting" && p.business_proof_url).length,
+      awaitingVerification: all.filter((p: any) => p.business_proof_url && !p.admin_verified_at && !["paid", "refunded"].includes(p.status)).length,
     });
   };
 
@@ -198,6 +201,36 @@ const AdminDashboard = () => {
     setBankFormOpen(true);
   };
 
+  const deleteGig = async (id: string) => {
+    if (!confirm("Delete this gig? This cannot be undone.")) return;
+    setDeletingId(id);
+    const { error } = await supabase.from("gigs").delete().eq("id", id);
+    setDeletingId(null);
+    if (error) return toast.error(error.message);
+    toast.success("Gig deleted.");
+    load();
+  };
+
+  const deleteUser = async (id: string) => {
+    if (!confirm("Remove this user? This cannot be undone.")) return;
+    setDeletingId(id);
+    const { error } = await supabase.from("profiles").delete().eq("id", id);
+    setDeletingId(null);
+    if (error) return toast.error(error.message);
+    toast.success("User removed.");
+    load();
+  };
+
+  const deletePayment = async (id: string) => {
+    if (!confirm("Delete this payment record? This cannot be undone.")) return;
+    setDeletingId(id);
+    const { error } = await supabase.from("payments").delete().eq("id", id);
+    setDeletingId(null);
+    if (error) return toast.error(error.message);
+    toast.success("Payment record deleted.");
+    load();
+  };
+
   const resetDemo = async () => {
     if (!confirm("Reset demo data? This wipes existing demo users (gigbridge.test) and re-creates them.")) return;
     setResetting(true);
@@ -232,12 +265,13 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <StatCard label="Total users" value={stats.users} icon={Users} />
-          <StatCard label="Total gigs" value={stats.gigs} icon={Briefcase} />
-          <StatCard label="To verify" value={stats.awaitingVerification} icon={ShieldCheck} />
-          <StatCard label="Pending payouts" value={stats.payouts} icon={Wallet} />
-          <StatCard label="Commission" value={formatPKR(stats.commission)} icon={Wallet} />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <StatCard label="Total Users" value={stats.users} icon={Users} />
+          <StatCard label="Total Gigs" value={stats.gigs} icon={Briefcase} />
+          <StatCard label="Gigs Completed" value={stats.gigsCompleted} icon={BadgeCheck} />
+          <StatCard label="Pending Verification" value={stats.awaitingVerification} icon={ShieldCheck} />
+          <StatCard label="Pending Payouts" value={stats.payouts} icon={Wallet} />
+          <StatCard label="Total Commission" value={formatPKR(stats.commission)} icon={Wallet} />
         </div>
 
         <Tabs defaultValue="verify">
@@ -399,6 +433,9 @@ const AdminDashboard = () => {
                                 Release
                               </Button>
                             )}
+                            <Button size="sm" variant="ghost" onClick={() => deletePayment(p.id)} disabled={deletingId === p.id}>
+                              {deletingId === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 text-destructive" />}
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -419,17 +456,23 @@ const AdminDashboard = () => {
                     <TableHead>University</TableHead>
                     <TableHead>Company</TableHead>
                     <TableHead>Joined</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {users.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No users found.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No users found.</TableCell></TableRow>
                   ) : users.map((u: any) => (
                     <TableRow key={u.id}>
                       <TableCell className="font-medium">{u.full_name || "Unnamed user"}</TableCell>
                       <TableCell>{u.university || "—"}</TableCell>
                       <TableCell>{u.company_name || "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{new Date(u.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <Button size="sm" variant="ghost" onClick={() => deleteUser(u.id)} disabled={deletingId === u.id}>
+                          {deletingId === u.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 text-destructive" />}
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -449,11 +492,12 @@ const AdminDashboard = () => {
                     <TableHead>Location</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Posted</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {gigs.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No gigs found.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No gigs found.</TableCell></TableRow>
                   ) : gigs.map((g: any) => (
                     <TableRow key={g.id}>
                       <TableCell className="font-medium">{g.title}</TableCell>
@@ -467,6 +511,11 @@ const AdminDashboard = () => {
                       <TableCell>{g.location}</TableCell>
                       <TableCell><StatusBadge status={g.status} /></TableCell>
                       <TableCell className="text-sm text-muted-foreground">{new Date(g.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <Button size="sm" variant="ghost" onClick={() => deleteGig(g.id)} disabled={deletingId === g.id}>
+                          {deletingId === g.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 text-destructive" />}
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -522,6 +571,24 @@ const AdminDashboard = () => {
                                   <div className="font-medium mb-1">Dispute reason</div>
                                   <div className="bg-muted/40 rounded-lg p-3 text-foreground/80">{disputeRow?.reason || "No reason provided"}</div>
                                 </div>
+                                {Array.isArray(d.submissions) && d.submissions.length > 0 && (
+                                  <div>
+                                    <div className="font-medium mb-1">Student submission</div>
+                                    {d.submissions.map((s: any) => {
+                                      const fileIsExternal = typeof s.file_url === "string" && /^https?:\/\//i.test(s.file_url);
+                                      return (
+                                        <div key={s.id} className="bg-muted/40 rounded-lg p-3 text-foreground/80 space-y-1.5 mb-2">
+                                          <p className="whitespace-pre-wrap text-xs">{s.message}</p>
+                                          {s.link_url && <a href={s.link_url} target="_blank" rel="noreferrer" className="block text-primary hover:underline text-xs">{s.link_url}</a>}
+                                          {s.file_url && (fileIsExternal
+                                            ? <a href={s.file_url} target="_blank" rel="noreferrer" className="block text-primary hover:underline text-xs">Open submitted file</a>
+                                            : <StorageObjectButton bucket="submission-files" path={s.file_url} label="Open submitted file" size="sm" />
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
                                 {disputeRow?.evidence_urls?.length > 0 && (
                                   <div>
                                     <div className="font-medium mb-1">Evidence ({disputeRow.evidence_urls.length} files)</div>
