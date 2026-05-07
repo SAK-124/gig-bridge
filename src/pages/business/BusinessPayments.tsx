@@ -14,6 +14,7 @@ import { formatPKR, paymentDisplayStatus } from "@/lib/payments";
 import { ArrowRight, ReceiptText, Star } from "lucide-react";
 import { DeleteActionButton } from "@/components/DeleteActionButton";
 import { toast } from "sonner";
+import { fetchProfileMap } from "@/lib/profileMaps";
 
 const BusinessPayments = () => {
   const { user } = useAuth();
@@ -24,12 +25,14 @@ const BusinessPayments = () => {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("hires")
-      .select("id, status, student_id, gigs(title), profiles:student_id(full_name), payments(id, gig_amount, platform_fee, total_amount, status, business_proof_url, admin_payout_proof_url)")
+      .select("id, status, student_id, gigs(title), payments(id, gig_amount, platform_fee, total_amount, status, business_proof_url, admin_payout_proof_url)")
       .eq("business_id", user.id)
       .order("created_at", { ascending: false });
-    setRows(data || []);
+    if (error) toast.error(error.message);
+    const profileMap = await fetchProfileMap((data || []).map((r: any) => r.student_id), "full_name");
+    setRows((data || []).map((r: any) => ({ ...r, profiles: profileMap.get(r.student_id) || null })));
     setLoading(false);
 
     const paidIds = (data || []).filter((r: any) => r.status === "paid").map((r: any) => r.id);

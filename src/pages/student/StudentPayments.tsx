@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/StatusBadge";
 import { RatingPrompt } from "@/components/RatingPrompt";
 import { formatPKR } from "@/lib/payments";
+import { fetchProfileMap } from "@/lib/profileMaps";
+import { toast } from "sonner";
 import { Star } from "lucide-react";
 
 const StudentPayments = () => {
@@ -17,11 +19,13 @@ const StudentPayments = () => {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("hires")
-      .select("id, status, business_id, gigs(title), profiles:business_id(company_name, full_name), payments(gig_amount, status, paid_to_student_at)")
+      .select("id, status, business_id, gigs(title), payments(gig_amount, status, paid_to_student_at)")
       .eq("student_id", user.id);
-    setRows(data || []);
+    if (error) toast.error(error.message);
+    const profileMap = await fetchProfileMap((data || []).map((r: any) => r.business_id), "company_name, full_name");
+    setRows((data || []).map((r: any) => ({ ...r, profiles: profileMap.get(r.business_id) || null })));
 
     // Check which paid hires already have a review from this student
     const paidIds = (data || []).filter((r: any) => r.status === "paid").map((r: any) => r.id);

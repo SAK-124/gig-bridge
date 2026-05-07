@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { HireChat } from "@/components/HireChat";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatPKR } from "@/lib/payments";
+import { fetchProfileMap } from "@/lib/profileMaps";
 import { Loader2, ShieldCheck, Lock, ExternalLink, Package, CheckSquare } from "lucide-react";
 
 const resolutionLabel: Record<string, string> = {
@@ -34,11 +35,20 @@ const DisputeDetail = () => {
     if (!hireId) return;
     (async () => {
       const [hireRes, disputeRes, subRes] = await Promise.all([
-        supabase.from("hires").select("id, status, gigs(title, description, deliverables, acceptance_criteria, budget), profiles:student_id(full_name), business:business_id(company_name, full_name), payments(id, status, total_amount, gig_amount)").eq("id", hireId).maybeSingle(),
+        supabase.from("hires").select("id, status, student_id, business_id, gigs(title, description, deliverables, acceptance_criteria, budget), payments(id, status, total_amount, gig_amount)").eq("id", hireId).maybeSingle(),
         supabase.from("disputes").select("*").eq("hire_id", hireId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
         supabase.from("submissions").select("*").eq("hire_id", hireId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
-      setHire(hireRes.data);
+      if (hireRes.data) {
+        const profileMap = await fetchProfileMap([hireRes.data.student_id, hireRes.data.business_id], "full_name, company_name");
+        setHire({
+          ...hireRes.data,
+          profiles: profileMap.get(hireRes.data.student_id) || null,
+          business: profileMap.get(hireRes.data.business_id) || null,
+        });
+      } else {
+        setHire(null);
+      }
       setDispute(disputeRes.data);
       setSubmission(subRes.data);
       setLoading(false);

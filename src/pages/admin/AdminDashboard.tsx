@@ -20,6 +20,7 @@ import { Loader2, Wallet, Users, Briefcase, ShieldAlert, Sparkles, ShieldCheck, 
 import { StatCard } from "@/components/StatCard";
 import { StorageObjectButton } from "@/components/StorageObjectButton";
 import { DeleteActionButton } from "@/components/DeleteActionButton";
+import { fetchProfileMap } from "@/lib/profileMaps";
 
 type PayoutForm = { method: string; reference: string; proofPath: string };
 
@@ -70,15 +71,49 @@ const AdminDashboard = () => {
   const load = async () => {
     const [usersRes, gigsRes, paymentsRes, disputeRes, bankRes] = await Promise.all([
       supabase.from("profiles").select("id, user_id, full_name, university, company_name, created_at").order("created_at", { ascending: false }),
-      supabase.from("gigs").select("id, title, budget, status, location, created_at, business_id, profiles:business_id(company_name, full_name)").order("created_at", { ascending: false }),
-      supabase.from("payments").select("*, hires(id, student_id, business_id, status, gigs(title, business_id, profiles:business_id(company_name, full_name)), profiles!hires_student_id_fkey(full_name))").order("created_at", { ascending: false }),
-      supabase.from("hires").select("id, status, created_at, gigs(title), profiles!hires_student_id_fkey(full_name), payments(id, status, total_amount, business_proof_url), disputes(id, reason, raised_by_role, status, evidence_urls), submissions(id, message, link_url, file_url, created_at)").eq("status", "disputed").order("created_at", { ascending: false }),
+      supabase.from("gigs").select("id, title, budget, status, location, created_at, business_id").order("created_at", { ascending: false }),
+      supabase.from("payments").select("*, hires(id, student_id, business_id, status, gigs(title, business_id))").order("created_at", { ascending: false }),
+      supabase.from("hires").select("id, status, created_at, student_id, business_id, gigs(title), payments(id, status, total_amount, business_proof_url), disputes(id, reason, raised_by_role, status, evidence_urls), submissions(id, message, link_url, file_url, created_at)").eq("status", "disputed").order("created_at", { ascending: false }),
       supabase.from("platform_bank_accounts").select("*").order("sort_order"),
     ]);
-    const all = paymentsRes.data || [];
+    const queryErrors = [usersRes.error, gigsRes.error, paymentsRes.error, disputeRes.error, bankRes.error].filter(Boolean);
+    if (queryErrors.length) toast.error(queryErrors[0]?.message || "Could not load admin dashboard data");
+
+    const gigRows = gigsRes.data || [];
+    const paymentRows = paymentsRes.data || [];
+    const disputeRows = disputeRes.data || [];
+    const businessIds = [
+      ...gigRows.map((g: any) => g.business_id),
+      ...paymentRows.map((p: any) => p.hires?.business_id || p.hires?.gigs?.business_id),
+      ...disputeRows.map((d: any) => d.business_id),
+    ];
+    const studentIds = [
+      ...paymentRows.map((p: any) => p.hires?.student_id),
+      ...disputeRows.map((d: any) => d.student_id),
+    ];
+    const [businessProfiles, studentProfiles] = await Promise.all([
+      fetchProfileMap(businessIds, "company_name, full_name"),
+      fetchProfileMap(studentIds, "full_name"),
+    ]);
+    const gigsWithProfiles = gigRows.map((g: any) => ({ ...g, profiles: businessProfiles.get(g.business_id) || null }));
+    const all = paymentRows.map((p: any) => {
+      const hire = p.hires;
+      if (!hire) return p;
+      const businessId = hire.business_id || hire.gigs?.business_id;
+      return {
+        ...p,
+        hires: {
+          ...hire,
+          profiles: studentProfiles.get(hire.student_id) || null,
+          gigs: hire.gigs ? { ...hire.gigs, profiles: businessProfiles.get(businessId) || null } : hire.gigs,
+        },
+      };
+    });
+    const disputesWithProfiles = disputeRows.map((d: any) => ({ ...d, profiles: studentProfiles.get(d.student_id) || null }));
+
     setUsers(usersRes.data || []);
-    setGigs(gigsRes.data || []);
-    setDisputes(disputeRes.data || []);
+    setGigs(gigsWithProfiles);
+    setDisputes(disputesWithProfiles);
     setAllPayments(all);
     setBankAccounts(bankRes.data || []);
     setPendingVerification(all.filter((p: any) => p.business_proof_url && !p.admin_verified_at && !["paid", "refunded"].includes(p.status)));
