@@ -164,8 +164,8 @@ Deno.serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return json({ error: "Unauthorized" }, 401);
 
-    const { data: roleRow } = await userClient.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
-    if (roleRow?.role !== "admin") return json({ error: "Admin only" }, 403);
+    const { data: roleRows } = await userClient.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin");
+    if (!roleRows?.length) return json({ error: "Admin only" }, 403);
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,

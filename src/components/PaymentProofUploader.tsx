@@ -12,7 +12,12 @@ type Props = {
 };
 
 const MAX_BYTES = 5 * 1024 * 1024;
-const ACCEPTED = ["image/png", "image/jpeg", "image/jpg", "image/webp", "application/pdf"];
+const ACCEPTED = ["application/pdf"];
+
+function isAcceptedProof(file: File) {
+  if (file.type.startsWith("image/") || ACCEPTED.includes(file.type)) return true;
+  return /\.(png|jpe?g|webp|heic|heif|pdf)$/i.test(file.name);
+}
 
 export const PaymentProofUploader = ({ hireId, uploaderRole, onUploaded, buttonLabel }: Props) => {
   const [busy, setBusy] = useState(false);
@@ -20,8 +25,8 @@ export const PaymentProofUploader = ({ hireId, uploaderRole, onUploaded, buttonL
 
   const handleFile = async (file?: File | null) => {
     if (!file) return;
-    if (!ACCEPTED.includes(file.type)) {
-      toast.error("Use a PNG, JPEG, WebP, or PDF screenshot.");
+    if (!isAcceptedProof(file)) {
+      toast.error("Use an image or PDF screenshot.");
       return;
     }
     if (file.size > MAX_BYTES) {
@@ -32,7 +37,7 @@ export const PaymentProofUploader = ({ hireId, uploaderRole, onUploaded, buttonL
     const ext = file.name.split(".").pop() || "png";
     const safeName = `${uploaderRole}-${Date.now()}.${ext.toLowerCase()}`;
     const path = `${hireId}/${safeName}`;
-    const { error } = await supabase.storage.from("payment-proofs").upload(path, file, { upsert: false, contentType: file.type });
+    const { error } = await supabase.storage.from("payment-proofs").upload(path, file, { upsert: false, contentType: file.type || "application/octet-stream" });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Screenshot uploaded.");
@@ -44,9 +49,9 @@ export const PaymentProofUploader = ({ hireId, uploaderRole, onUploaded, buttonL
       <input
         ref={inputRef}
         type="file"
-        accept={ACCEPTED.join(",")}
+        accept="image/*,.pdf"
         className="hidden"
-        onChange={(e) => handleFile(e.target.files?.[0])}
+        onChange={(e) => { handleFile(e.target.files?.[0]); e.currentTarget.value = ""; }}
       />
       <Button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="w-full sm:w-auto">
         {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}

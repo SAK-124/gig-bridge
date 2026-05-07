@@ -4,6 +4,13 @@ import type { Session, User } from "@supabase/supabase-js";
 
 export type AppRole = "student" | "business" | "admin";
 
+const rolePriority: AppRole[] = ["admin", "business", "student"];
+
+export function resolvePrimaryRole(roles: Array<{ role: string } | string | null | undefined>): AppRole | null {
+  const values = roles.map((row) => typeof row === "string" ? row : row?.role);
+  return rolePriority.find((role) => values.includes(role)) ?? null;
+}
+
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -36,8 +43,8 @@ export function useUserRole() {
     if (authLoading) return;
     if (!user) { setRole(null); setLoading(false); return; }
     setLoading(true);
-    supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle().then(({ data }) => {
-      setRole((data?.role as AppRole) ?? null);
+    supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
+      setRole(resolvePrimaryRole(data || []));
       setLoading(false);
     });
   }, [user, authLoading]);

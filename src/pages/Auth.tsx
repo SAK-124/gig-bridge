@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { resolvePrimaryRole } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,13 +46,13 @@ const Auth = () => {
     const userId = signInData.user?.id;
     if (!userId) { setLoading(false); await supabase.auth.signOut(); return toast.error("Sign-in succeeded but no user was returned. Try again."); }
 
-    let { data: roleRow, error: roleErr } = await supabase
+    let { data: roleRows, error: roleErr } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", userId)
-      .maybeSingle();
+      .eq("user_id", userId);
+    let primaryRole = resolvePrimaryRole(roleRows || []);
 
-    if (!roleRow?.role) {
+    if (!primaryRole) {
       const metadataRole = signInData.user.user_metadata?.role;
       if (metadataRole === "student" || metadataRole === "business") {
         const { error: insertRoleError } = await supabase
@@ -61,21 +62,21 @@ const Auth = () => {
           const retry = await supabase
             .from("user_roles")
             .select("role")
-            .eq("user_id", userId)
-            .maybeSingle();
-          roleRow = retry.data;
+            .eq("user_id", userId);
+          roleRows = retry.data;
           roleErr = retry.error;
+          primaryRole = resolvePrimaryRole(roleRows || []);
         }
       }
     }
 
     setLoading(false);
     if (roleErr) { await supabase.auth.signOut(); return toast.error(`Could not load your role: ${roleErr.message}`); }
-    if (!roleRow?.role) { await supabase.auth.signOut(); return toast.error("Account exists but no role is attached. Contact admin to finish setup."); }
+    if (!primaryRole) { await supabase.auth.signOut(); return toast.error("Account exists but no role is attached. Contact admin to finish setup."); }
 
     toast.success("Welcome back!");
-    if (roleRow.role === "admin") navigate("/admin");
-    else if (roleRow.role === "business") navigate("/business");
+    if (primaryRole === "admin") navigate("/admin");
+    else if (primaryRole === "business") navigate("/business");
     else navigate("/student");
   };
 

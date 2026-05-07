@@ -27,6 +27,7 @@ const ActiveWork = () => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [disputeForm, setDisputeForm] = useState<Record<string, { open: boolean; reason: string; saving: boolean }>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const maxSubmissionBytes = 25 * 1024 * 1024;
 
   const resetSubmissionForm = () => {
     setForm({ message: "", link_url: "", file_url: "" });
@@ -44,6 +45,7 @@ const ActiveWork = () => {
 
   const uploadSubmissionFile = async (file?: File | null) => {
     if (!activeHire || !file) return;
+    if (file.size > maxSubmissionBytes) return toast.error("Max upload size is 25 MB.");
     setUploadingFile(true);
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
     const path = `${activeHire}/student-${Date.now()}-${safeName}`;
@@ -165,7 +167,7 @@ const ActiveWork = () => {
                               type="file"
                               accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.png,.jpg,.jpeg,.webp"
                               className="hidden"
-                              onChange={(e) => uploadSubmissionFile(e.target.files?.[0])}
+                              onChange={(e) => { uploadSubmissionFile(e.target.files?.[0]); e.currentTarget.value = ""; }}
                             />
                             <div className="flex flex-wrap gap-2">
                               <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploadingFile}>

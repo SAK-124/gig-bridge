@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { resolvePrimaryRole } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,11 +35,10 @@ const AdminLogin = () => {
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
+      .eq("role", "admin");
     setLoading(false);
     if (roleErr) { await supabase.auth.signOut(); return toast.error(`Role check failed: ${roleErr.message}`); }
-    if (!roleRow) {
+    if (resolvePrimaryRole(roleRow || []) !== "admin") {
       await supabase.auth.signOut();
       return toast.error("This account doesn't have admin access.");
     }

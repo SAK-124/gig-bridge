@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { BusinessProfileCard } from "@/components/BusinessProfileCard";
 import { formatPKR } from "@/lib/payments";
-import { MapPin, Calendar, Loader2, Users, CheckSquare, Package, Target } from "lucide-react";
+import { MapPin, Calendar, Loader2, Users, CheckSquare, Package, Target, FileText, Languages, ClipboardList, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 const GigDetail = () => {
@@ -109,6 +109,14 @@ const GigDetail = () => {
           </div>
         )}
 
+        {(brief.file_format || brief.source_files_needed) && (
+          <div className="mb-5 text-sm">
+            <h2 className="font-semibold mb-1.5 flex items-center gap-2"><FileText className="h-4 w-4 text-primary" />File requirements</h2>
+            {brief.file_format && <div><span className="text-muted-foreground">Format:</span> {brief.file_format}</div>}
+            {brief.source_files_needed && <div><span className="text-muted-foreground">Editable/source files:</span> Required</div>}
+          </div>
+        )}
+
         {/* Scope */}
         {(brief.scope_included || brief.scope_excluded) && (
           <div className="mb-5 grid sm:grid-cols-2 gap-3">
@@ -131,6 +139,11 @@ const GigDetail = () => {
         {brief.revision_count !== undefined && (
           <div className="mb-5">
             <span className="text-sm"><span className="font-semibold">Revisions included:</span> {brief.revision_count}</span>
+          </div>
+        )}
+        {brief.extra_work_definition && (
+          <div className="mb-5 text-sm">
+            <span className="font-semibold">Extra work means:</span> {brief.extra_work_definition}
           </div>
         )}
 
@@ -158,12 +171,43 @@ const GigDetail = () => {
         {brief.experience_level && (
           <div className="mb-4 text-sm"><span className="font-semibold">Experience level:</span> {brief.experience_level}</div>
         )}
+        {brief.language_preference && (
+          <div className="mb-4 text-sm flex items-start gap-2">
+            <Languages className="h-4 w-4 text-primary mt-0.5" />
+            <div><span className="font-semibold">Language / university preference:</span> {brief.language_preference}</div>
+          </div>
+        )}
+
+        {(brief.style_references || brief.technical_specs || brief.rejection_criteria) && (
+          <div className="mb-5 space-y-2 text-sm">
+            <h2 className="font-semibold flex items-center gap-2"><ClipboardList className="h-4 w-4 text-accent-foreground" />Quality details</h2>
+            {brief.style_references && <div><span className="text-muted-foreground">References:</span> {brief.style_references}</div>}
+            {brief.technical_specs && <div><span className="text-muted-foreground">Technical specs:</span> {brief.technical_specs}</div>}
+            {brief.rejection_criteria && <div><span className="text-muted-foreground">Will be rejected:</span> {brief.rejection_criteria}</div>}
+          </div>
+        )}
 
         {/* Payment terms */}
         {(brief.payment_type || brief.release_condition) && (
           <div className="mb-4 text-sm">
             {brief.payment_type && <div><span className="font-semibold">Payment type:</span> {brief.payment_type}</div>}
             {brief.release_condition && <div><span className="font-semibold">Release condition:</span> {brief.release_condition}</div>}
+          </div>
+        )}
+
+        {(brief.assets_provided || brief.assets_needed || brief.assets_deadline) && (
+          <div className="mb-5 space-y-1 text-sm">
+            <h2 className="font-semibold mb-1.5">Business inputs</h2>
+            {brief.assets_provided && <div><span className="text-muted-foreground">Business provides:</span> {brief.assets_provided}</div>}
+            {brief.assets_needed && <div><span className="text-muted-foreground">Student needs/access:</span> {brief.assets_needed}</div>}
+            {brief.assets_deadline && <div><span className="text-muted-foreground">Assets by:</span> {new Date(brief.assets_deadline).toLocaleDateString()}</div>}
+          </div>
+        )}
+
+        {brief.no_off_platform && (
+          <div className="rounded-xl bg-primary-soft/50 border border-primary/20 p-3 text-sm flex gap-2 text-foreground/80">
+            <ShieldCheck className="h-4 w-4 text-primary mt-0.5" />
+            <span>All communication and payment must stay on Gig Bridge for protection.</span>
           </div>
         )}
       </Card>
